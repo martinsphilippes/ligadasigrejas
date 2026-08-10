@@ -42,7 +42,7 @@ export default async function ChurchesPage() {
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {churches.map((church) => (
             <Link key={church.id} href={`/igrejas/${church.id}`} className="group">
-              <Card className="flex h-full items-center gap-4 p-4 transition-all duration-200 group-hover:-translate-y-0.5 group-hover:border-brand-300 group-hover:shadow-md animate-fade-up">
+              <Card className="flex h-full items-center gap-4 p-4 transition-all duration-150 group-hover:-translate-y-0.5 group-hover:border-brand-300 group-hover:shadow-md group-active:scale-[0.97] group-active:border-brand-500 group-active:bg-brand-50/50 animate-fade-up">
                 <Avatar name={church.name} src={church.crestUrl} shape="shield" size="lg" />
                 <div className="min-w-0">
                   <h3 className="truncate font-semibold text-zinc-900 group-hover:text-brand-800">

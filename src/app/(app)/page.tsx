@@ -148,7 +148,7 @@ function LeagueCard({
 }) {
   return (
     <Link href={`/ligas/${league.slug}`} className="group">
-      <Card className="h-full p-5 transition-all duration-200 group-hover:-translate-y-0.5 group-hover:border-brand-300 group-hover:shadow-md animate-fade-up">
+      <Card className="h-full p-5 transition-all duration-150 group-hover:-translate-y-0.5 group-hover:border-brand-300 group-hover:shadow-md group-active:scale-[0.97] group-active:border-brand-500 group-active:bg-brand-50/50 animate-fade-up">
         <div className="flex items-start justify-between gap-3">
           <Avatar name={league.name} src={league.logoUrl} shape="shield" size="lg" />
           <LeagueStatusBadge status={league.status} />

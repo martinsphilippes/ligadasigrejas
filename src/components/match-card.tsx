@@ -36,7 +36,7 @@ export function MatchCard({
       href={`/ligas/${leagueSlug}/jogos/${match.id}`}
       className="group block animate-fade-up"
     >
-      <div className="rounded-xl border border-zinc-200/80 bg-white p-4 shadow-sm shadow-zinc-900/[0.03] transition-all duration-200 group-hover:-translate-y-0.5 group-hover:border-brand-300 group-hover:shadow-md">
+      <div className="rounded-xl border border-zinc-200/80 bg-white p-4 shadow-sm shadow-zinc-900/[0.03] transition-all duration-150 group-hover:-translate-y-0.5 group-hover:border-brand-300 group-hover:shadow-md group-active:scale-[0.98] group-active:border-brand-500 group-active:bg-brand-50/50">
         <div className="mb-2.5 flex items-center justify-between gap-2 text-xs text-zinc-400">
           <span>
             {showRound && match.round && `${match.round.name ?? `Rodada ${match.round.number}`} · `}

@@ -73,7 +73,7 @@ export default async function TeamsPage({
           {teams.map((team) => (
             <Card
               key={team.id}
-              className="p-4 transition-all duration-200 hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-md animate-fade-up"
+              className="p-4 transition-all duration-150 hover:-translate-y-0.5 hover:border-brand-300 hover:shadow-md active:scale-[0.97] active:border-brand-500 animate-fade-up"
             >
               <Link
                 href={`/ligas/${league.slug}/equipes/${team.id}`}

@@ -44,10 +44,10 @@ export function LeagueNav({ slug, canManage }: { slug: string; canManage: boolea
             key={item.href}
             href={item.href}
             className={cn(
-              "flex shrink-0 items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-colors",
+              "flex shrink-0 items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-100 active:scale-[0.97]",
               active
                 ? "bg-brand-800 text-white shadow-sm"
-                : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900",
+                : "text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 active:bg-brand-100",
             )}
           >
             <span className="text-xs opacity-80">{item.icon}</span>
