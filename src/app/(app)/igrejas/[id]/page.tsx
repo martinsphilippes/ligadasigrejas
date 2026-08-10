@@ -1,0 +1,229 @@
+/* eslint-disable @next/next/no-img-element */
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { db } from "@/lib/db";
+import { Avatar } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
+import { ButtonLink } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ConfirmButton } from "@/components/ui/confirm-button";
+import { EmptyState } from "@/components/ui/empty-state";
+import { AthleteCard } from "@/components/athlete-card";
+import { StaffForm } from "@/components/forms/staff-form";
+import {
+  createStaffAction,
+  deleteChurchAction,
+  deleteStaffAction,
+} from "@/lib/actions/church";
+
+export default async function ChurchPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = await params;
+  const church = await db.church.findUnique({
+    where: { id },
+    include: {
+      athletes: { where: { active: true }, orderBy: [{ squadRole: "desc" }, { name: "asc" }] },
+      staff: { orderBy: { name: "asc" } },
+      leagueTeams: { include: { league: true } },
+    },
+  });
+  if (!church) notFound();
+
+  const titulares = church.athletes.filter((a) => a.squadRole === "TITULAR");
+  const reservas = church.athletes.filter((a) => a.squadRole !== "TITULAR");
+
+  return (
+    <main className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
+      {/* Cabeçalho da igreja */}
+      <div className="mb-8 flex flex-wrap items-start justify-between gap-4 animate-fade-up">
+        <div className="flex items-center gap-4">
+          <Avatar name={church.name} src={church.crestUrl} shape="shield" size="xl" />
+          <div>
+            <h1 className="text-2xl font-bold tracking-tight text-zinc-900">
+              {church.name}
+            </h1>
+            <p className="text-sm text-zinc-500">
+              {church.denomination} · {church.city}/{church.state}
+              {church.district && ` · ${church.district}`}
+            </p>
+            {church.pastorName && (
+              <p className="mt-0.5 text-xs text-zinc-400">
+                Pastor responsável: {church.pastorName}
+              </p>
+            )}
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <ButtonLink variant="secondary" href={`/igrejas/${church.id}/editar`}>
+            Editar
+          </ButtonLink>
+          <ButtonLink href={`/igrejas/${church.id}/atletas/novo`}>+ Atleta</ButtonLink>
+        </div>
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
+        <div className="space-y-6">
+          {/* Titulares */}
+          <section>
+            <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-zinc-500">
+              Titulares <Badge tone="green">{titulares.length}</Badge>
+            </h2>
+            {titulares.length === 0 ? (
+              <p className="rounded-lg border border-dashed border-zinc-300 px-4 py-6 text-center text-sm text-zinc-400">
+                Nenhum titular definido. Promova atletas do banco de reservas.
+              </p>
+            ) : (
+              <div className="grid gap-2 sm:grid-cols-2">
+                {titulares.map((a) => (
+                  <AthleteCard key={a.id} athlete={a} canManage />
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* Reservas */}
+          <section>
+            <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold uppercase tracking-wide text-zinc-500">
+              Reservas <Badge>{reservas.length}</Badge>
+            </h2>
+            {reservas.length === 0 ? (
+              church.athletes.length === 0 ? (
+                <EmptyState
+                  icon="👟"
+                  title="Elenco vazio"
+                  description="Cadastre os atletas da igreja para montar a equipe."
+                  action={
+                    <ButtonLink href={`/igrejas/${church.id}/atletas/novo`}>
+                      Cadastrar atleta
+                    </ButtonLink>
+                  }
+                />
+              ) : (
+                <p className="rounded-lg border border-dashed border-zinc-300 px-4 py-6 text-center text-sm text-zinc-400">
+                  Sem reservas no momento.
+                </p>
+              )
+            ) : (
+              <div className="grid gap-2 sm:grid-cols-2">
+                {reservas.map((a) => (
+                  <AthleteCard key={a.id} athlete={a} canManage />
+                ))}
+              </div>
+            )}
+          </section>
+
+          {/* Comissão técnica */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Comissão técnica</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              {church.staff.length > 0 && (
+                <ul className="divide-y divide-zinc-100">
+                  {church.staff.map((s) => (
+                    <li key={s.id} className="flex items-center gap-3 py-2.5">
+                      <Avatar name={s.name} src={s.photoUrl} size="sm" />
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-zinc-900">{s.name}</p>
+                        <p className="text-xs text-zinc-500">{s.role}</p>
+                      </div>
+                      <form action={deleteStaffAction.bind(null, s.id)}>
+                        <ConfirmButton
+                          variant="ghost"
+                          size="sm"
+                          className="h-auto px-2 py-1 text-[11px] text-red-500 hover:bg-red-50"
+                          message={`Remover ${s.name} da comissão?`}
+                        >
+                          Remover
+                        </ConfirmButton>
+                      </form>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              <StaffForm action={createStaffAction.bind(null, church.id)} />
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Coluna lateral */}
+        <div className="space-y-6">
+          {church.photoUrl && (
+            <img
+              src={church.photoUrl}
+              alt={church.name}
+              className="w-full rounded-xl border border-zinc-200 object-cover"
+            />
+          )}
+          <Card>
+            <CardHeader>
+              <CardTitle>Informações</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <dl className="space-y-2.5 text-sm">
+                {church.address && <InfoRow label="Endereço" value={church.address} />}
+                {church.phone && <InfoRow label="Telefone" value={church.phone} />}
+                {church.email && <InfoRow label="E-mail" value={church.email} />}
+                <InfoRow label="Atletas no elenco" value={String(church.athletes.length)} />
+              </dl>
+              {church.description && (
+                <p className="mt-4 border-t border-zinc-100 pt-3 text-sm leading-relaxed text-zinc-600">
+                  {church.description}
+                </p>
+              )}
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Ligas que participa</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {church.leagueTeams.length === 0 ? (
+                <p className="text-sm text-zinc-400">Ainda não participa de nenhuma liga.</p>
+              ) : (
+                <ul className="space-y-2">
+                  {church.leagueTeams.map((lt) => (
+                    <li key={lt.id}>
+                      <Link
+                        href={`/ligas/${lt.league.slug}`}
+                        className="flex items-center gap-2 rounded-lg px-2 py-1.5 text-sm font-medium text-zinc-700 transition-colors hover:bg-zinc-50 hover:text-brand-800"
+                      >
+                        <Avatar name={lt.league.name} src={lt.league.logoUrl} shape="shield" size="xs" />
+                        {lt.league.name}
+                        <span className="ml-auto text-xs text-zinc-400">{lt.league.season}</span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </CardContent>
+          </Card>
+
+          <form action={deleteChurchAction.bind(null, church.id)} className="text-right">
+            <ConfirmButton
+              variant="ghost"
+              size="sm"
+              className="text-red-500 hover:bg-red-50 hover:text-red-700"
+              message={`Excluir a igreja ${church.name}? Todos os atletas e participações em ligas serão removidos.`}
+            >
+              Excluir igreja
+            </ConfirmButton>
+          </form>
+        </div>
+      </div>
+    </main>
+  );
+}
+
+function InfoRow({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="flex justify-between gap-3">
+      <dt className="shrink-0 text-zinc-400">{label}</dt>
+      <dd className="text-right font-medium text-zinc-700">{value}</dd>
+    </div>
+  );
+}
