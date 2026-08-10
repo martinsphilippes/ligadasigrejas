@@ -15,22 +15,29 @@ function pentagon(cx, cy, r, rotationDeg = -90) {
 }
 
 /**
- * Bola estilizada (desenho original): gomo pentagonal central com costuras
- * radiais — visual limpo e vivo, com branco brilhante e reflexo marcante.
+ * Bola escura com gomos brancos: gomo pentagonal central escuro cercado por
+ * gomos brancos grandes — visual marcante escolhido para o ícone.
  */
 function ballSvg() {
-  const R = 94; // raio da bola
+  const R = 92; // raio da bola
   const dark = "#16181d";
-  const centerR = 40;
+  const centerR = 33;
+  const edgeDist = 94; // centro dos gomos da borda (metade visível)
+  const edgeR = 34;
 
-  // Costuras: dos vértices do pentágono até perto da borda
+  let edges = "";
   let seams = "";
   for (let i = 0; i < 5; i++) {
     const a = ((-90 + i * 72) * Math.PI) / 180;
+    const ex = edgeDist * Math.cos(a);
+    const ey = edgeDist * Math.sin(a);
+    // gomo da borda com um vértice apontando para o centro da bola
+    edges += `<polygon points="${pentagon(ex, ey, edgeR, (-90 + i * 72) + 180)}" fill="${dark}"/>`;
+    // costura: do vértice do gomo central até o vértice interno do gomo da borda
     const x1 = centerR * Math.cos(a);
     const y1 = centerR * Math.sin(a);
-    const x2 = (R - 4) * Math.cos(a);
-    const y2 = (R - 4) * Math.sin(a);
+    const x2 = (edgeDist - edgeR) * Math.cos(a);
+    const y2 = (edgeDist - edgeR) * Math.sin(a);
     seams += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}"/>`;
   }
 
@@ -38,12 +45,15 @@ function ballSvg() {
     <g transform="translate(256,362)">
       <circle r="${R}" fill="url(#ballGrad)"/>
       <g clip-path="url(#ballClip)">
-        <polygon points="${pentagon(0, 0, centerR)}" fill="${dark}" stroke="${dark}" stroke-width="10" stroke-linejoin="round"/>
-        <g stroke="${dark}" stroke-width="9" stroke-linecap="round">${seams}</g>
-        <!-- brilho vivo no topo -->
-        <ellipse cx="-34" cy="-50" rx="36" ry="26" fill="url(#ballShine)" transform="rotate(-32 -34 -50)"/>
+        <polygon points="${pentagon(0, 0, centerR)}" fill="${dark}" stroke="${dark}" stroke-width="6" stroke-linejoin="round"/>
+        <g stroke="${dark}" stroke-width="6" stroke-linejoin="round">${edges}</g>
+        <g stroke="${dark}" stroke-width="5.5" stroke-linecap="round">${seams}</g>
+        <!-- sombra inferior para volume -->
+        <circle r="${R}" fill="url(#ballShade)"/>
+        <!-- brilho superior -->
+        <ellipse cx="-32" cy="-46" rx="34" ry="24" fill="url(#ballShine)" transform="rotate(-32 -32 -46)"/>
       </g>
-      <circle r="${R}" fill="none" stroke="${dark}" stroke-width="9"/>
+      <circle r="${R}" fill="none" stroke="#0a251a" stroke-width="9"/>
     </g>`;
 }
 
@@ -64,14 +74,14 @@ function iconSvg(contentScale = 1, rounded = true) {
       <stop offset="0%" stop-color="#f5c451"/>
       <stop offset="100%" stop-color="#d1951a"/>
     </linearGradient>
-    <radialGradient id="ballGrad" cx="36%" cy="28%" r="90%">
+    <radialGradient id="ballGrad" cx="36%" cy="28%" r="85%">
       <stop offset="0%" stop-color="#ffffff"/>
-      <stop offset="75%" stop-color="#ffffff"/>
-      <stop offset="100%" stop-color="#e3e3df"/>
+      <stop offset="62%" stop-color="#f4f4f1"/>
+      <stop offset="100%" stop-color="#cfcfc9"/>
     </radialGradient>
     <radialGradient id="ballShade" cx="36%" cy="28%" r="98%">
-      <stop offset="80%" stop-color="#000000" stop-opacity="0"/>
-      <stop offset="100%" stop-color="#000000" stop-opacity="0.18"/>
+      <stop offset="72%" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.28"/>
     </radialGradient>
     <radialGradient id="ballShine" cx="50%" cy="50%" r="50%">
       <stop offset="0%" stop-color="#ffffff" stop-opacity="0.85"/>
