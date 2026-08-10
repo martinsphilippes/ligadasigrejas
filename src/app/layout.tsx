@@ -1,5 +1,6 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
+import { PwaInstallBanner } from "@/components/pwa-install-banner";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -14,6 +15,16 @@ export const metadata: Metadata = {
   },
   description:
     "Plataforma para organizar campeonatos esportivos entre igrejas: equipes, atletas, tabelas, resultados e classificação.",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    title: "Liga Igrejas",
+    statusBarStyle: "black-translucent",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#14432f",
 };
 
 export default function RootLayout({
@@ -23,6 +34,7 @@ export default function RootLayout({
     <html lang="pt-BR">
       <body className={`${geistSans.variable} font-sans antialiased`}>
         {children}
+        <PwaInstallBanner />
       </body>
     </html>
   );
