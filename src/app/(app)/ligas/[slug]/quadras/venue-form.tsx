@@ -3,6 +3,7 @@
 import { useActionState } from "react";
 import { createVenueAction } from "@/lib/actions/schedule";
 import type { ActionState } from "@/lib/actions/league";
+import { AddressFields } from "@/components/forms/address-fields";
 import { Field, Input, Textarea } from "@/components/ui/field";
 import { FormError, FormSuccess } from "@/components/ui/form-message";
 import { SubmitButton } from "@/components/ui/submit-button";
@@ -10,6 +11,8 @@ import { SubmitButton } from "@/components/ui/submit-button";
 interface VenueData {
   name?: string;
   address?: string | null;
+  district?: string | null;
+  zipCode?: string | null;
   city?: string | null;
   state?: string | null;
   mapUrl?: string | null;
@@ -36,25 +39,21 @@ export function VenueForm({
     <form action={formAction} className="space-y-4">
       <FormError message={state.error} />
       <FormSuccess message={state.success} />
-      <div className="grid gap-4 sm:grid-cols-2">
-        <Field label="Nome da quadra">
-          <Input name="name" defaultValue={initial?.name} placeholder="Ginásio Municipal" required />
-        </Field>
-        <Field label="Endereço">
-          <Input name="address" defaultValue={initial?.address ?? ""} placeholder="Rua, número" />
-        </Field>
-      </div>
-      <div className="grid gap-4 sm:grid-cols-[1fr_90px_1fr]">
-        <Field label="Cidade">
-          <Input name="city" defaultValue={initial?.city ?? ""} placeholder="São Paulo" />
-        </Field>
-        <Field label="UF">
-          <Input name="state" defaultValue={initial?.state ?? ""} placeholder="SP" maxLength={2} />
-        </Field>
-        <Field label="Localização (link do mapa)">
-          <Input name="mapUrl" type="url" defaultValue={initial?.mapUrl ?? ""} placeholder="https://maps.google.com/..." />
-        </Field>
-      </div>
+      <Field label="Nome da quadra">
+        <Input name="name" defaultValue={initial?.name} placeholder="Ginásio Municipal" required />
+      </Field>
+      <AddressFields
+        initial={{
+          zipCode: initial?.zipCode,
+          address: initial?.address,
+          district: initial?.district,
+          city: initial?.city,
+          state: initial?.state,
+        }}
+      />
+      <Field label="Localização (link do mapa)">
+        <Input name="mapUrl" type="url" defaultValue={initial?.mapUrl ?? ""} placeholder="https://maps.google.com/..." />
+      </Field>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Foto (URL)">
           <Input name="photoUrl" type="url" defaultValue={initial?.photoUrl ?? ""} placeholder="https://..." />

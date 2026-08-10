@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import { createLeagueAction, type ActionState } from "@/lib/actions/league";
+import { CityUfFields } from "@/components/forms/address-fields";
 import { Field, Input, Textarea } from "@/components/ui/field";
 import { FormError } from "@/components/ui/form-message";
 import { SubmitButton } from "@/components/ui/submit-button";
@@ -26,14 +27,7 @@ export function NewLeagueForm() {
       <Field label="Descrição">
         <Textarea name="description" placeholder="Campeonato de futsal entre igrejas da região..." />
       </Field>
-      <div className="grid gap-4 sm:grid-cols-[1fr_100px]">
-        <Field label="Cidade">
-          <Input name="city" placeholder="São Paulo" />
-        </Field>
-        <Field label="UF">
-          <Input name="state" placeholder="SP" maxLength={2} />
-        </Field>
-      </div>
+      <CityUfFields />
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Data de início">
           <Input name="startDate" type="date" />

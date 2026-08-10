@@ -66,6 +66,7 @@ model Church {
   city         String
   state        String
   district     String? // bairro
+  zipCode      String? // CEP
   address      String?
   phone        String?
   email        String?
@@ -222,6 +223,8 @@ model Venue {
   league      League  @relation(fields: [leagueId], references: [id], onDelete: Cascade)
   name        String
   address     String?
+  district    String? // bairro
+  zipCode     String? // CEP
   city        String?
   state       String?
   mapUrl      String? // localização (link de mapa)

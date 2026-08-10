@@ -200,6 +200,7 @@ export default async function ChurchPage({
             <CardContent>
               <dl className="space-y-2.5 text-sm">
                 {church.address && <InfoRow label="Endereço" value={church.address} />}
+                {church.zipCode && <InfoRow label="CEP" value={church.zipCode} />}
                 {church.phone && <InfoRow label="Telefone" value={church.phone} />}
                 {church.email && <InfoRow label="E-mail" value={church.email} />}
                 <InfoRow label="Atletas no elenco" value={String(church.athletes.length)} />

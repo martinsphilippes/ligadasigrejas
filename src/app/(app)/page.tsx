@@ -10,17 +10,26 @@ import { Card } from "@/components/ui/card";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
 
-export default async function HomePage() {
+export default async function HomePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ uf?: string }>;
+}) {
+  const { uf } = await searchParams;
   const user = await requireUser();
   const organizer = isPlatformOrganizer(await getPlatformRole(user.sub));
 
-  const leagues = await db.league.findMany({
+  const allLeagues = await db.league.findMany({
     include: {
       sport: true,
       _count: { select: { teams: true, matches: true } },
     },
     orderBy: { createdAt: "desc" },
   });
+
+  // Regiões (UFs) com campeonatos, para o filtro
+  const regions = [...new Set(allLeagues.flatMap((l) => (l.state ? [l.state] : [])))].sort();
+  const leagues = uf ? allLeagues.filter((l) => l.state === uf) : allLeagues;
 
   const memberOf = new Set(
     (
@@ -41,6 +50,23 @@ export default async function HomePage() {
         description="Campeonatos que você organiza ou participa."
         actions={organizer && <ButtonLink href="/ligas/nova">+ Nova Liga</ButtonLink>}
       />
+
+      {/* Campeonatos por região */}
+      {regions.length > 1 && (
+        <div className="mb-5 flex flex-wrap items-center gap-1.5 animate-fade-in">
+          <span className="mr-1 text-xs font-semibold uppercase tracking-wide text-zinc-400">
+            📍 Região:
+          </span>
+          <RegionChip href="/" active={!uf}>
+            Todas
+          </RegionChip>
+          {regions.map((region) => (
+            <RegionChip key={region} href={`/?uf=${region}`} active={uf === region}>
+              {region}
+            </RegionChip>
+          ))}
+        </div>
+      )}
 
       {mine.length === 0 ? (
         organizer ? (
@@ -78,6 +104,29 @@ export default async function HomePage() {
         </>
       )}
     </main>
+  );
+}
+
+function RegionChip({
+  href,
+  active,
+  children,
+}: {
+  href: string;
+  active: boolean;
+  children: React.ReactNode;
+}) {
+  return (
+    <Link
+      href={href}
+      className={
+        active
+          ? "rounded-full border border-brand-700 bg-brand-700 px-3 py-1 text-xs font-medium text-white"
+          : "rounded-full border border-zinc-200 bg-white px-3 py-1 text-xs font-medium text-zinc-600 transition-colors hover:border-zinc-300 hover:text-zinc-900"
+      }
+    >
+      {children}
+    </Link>
   );
 }
 

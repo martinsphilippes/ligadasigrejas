@@ -2,6 +2,7 @@
 
 import { useActionState } from "react";
 import type { ActionState } from "@/lib/actions/league";
+import { AddressFields } from "@/components/forms/address-fields";
 import { Field, Input, Textarea } from "@/components/ui/field";
 import { FormError, FormSuccess } from "@/components/ui/form-message";
 import { SubmitButton } from "@/components/ui/submit-button";
@@ -12,6 +13,7 @@ interface ChurchData {
   city?: string;
   state?: string;
   district?: string | null;
+  zipCode?: string | null;
   address?: string | null;
   phone?: string | null;
   email?: string | null;
@@ -44,20 +46,16 @@ export function ChurchForm({
           <Input name="denomination" defaultValue={initial?.denomination} placeholder="Batista" required />
         </Field>
       </div>
-      <div className="grid gap-4 sm:grid-cols-[1fr_90px_1fr]">
-        <Field label="Cidade">
-          <Input name="city" defaultValue={initial?.city} placeholder="São Paulo" required />
-        </Field>
-        <Field label="UF">
-          <Input name="state" defaultValue={initial?.state} placeholder="SP" maxLength={2} required />
-        </Field>
-        <Field label="Bairro">
-          <Input name="district" defaultValue={initial?.district ?? ""} placeholder="Centro" />
-        </Field>
-      </div>
-      <Field label="Endereço">
-        <Input name="address" defaultValue={initial?.address ?? ""} placeholder="Rua, número" />
-      </Field>
+      <AddressFields
+        initial={{
+          zipCode: initial?.zipCode,
+          address: initial?.address,
+          district: initial?.district,
+          city: initial?.city,
+          state: initial?.state,
+        }}
+        requireCity
+      />
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Telefone">
           <Input name="phone" defaultValue={initial?.phone ?? ""} placeholder="(11) 99999-9999" />

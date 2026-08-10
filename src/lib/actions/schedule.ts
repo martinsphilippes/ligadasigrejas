@@ -84,6 +84,8 @@ export async function setTeamGroupAction(
 const venueSchema = z.object({
   name: z.string().trim().min(2, "Informe o nome da quadra"),
   address: optional(z.string().trim()),
+  district: optional(z.string().trim()),
+  zipCode: optional(z.string().trim().regex(/^\d{5}-?\d{3}$/, "CEP inválido (use 00000-000)")),
   city: optional(z.string().trim()),
   state: optional(z.string().trim().max(2, "Use a sigla (ex.: SP)")),
   mapUrl: optional(z.string().trim().url("Link de localização inválido")),
@@ -128,6 +130,8 @@ export async function updateVenueAction(
       data: {
         name: d.name,
         address: d.address ?? null,
+        district: d.district ?? null,
+        zipCode: d.zipCode ?? null,
         city: d.city ?? null,
         state: d.state?.toUpperCase() ?? null,
         mapUrl: d.mapUrl ?? null,

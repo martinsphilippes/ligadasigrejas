@@ -7,6 +7,7 @@ import {
   type ActionState,
 } from "@/lib/actions/league";
 import { LEAGUE_STATUS } from "@/lib/domain/enums";
+import { CityUfFields } from "@/components/forms/address-fields";
 import { Field, Input, Select, Textarea } from "@/components/ui/field";
 import { FormError, FormSuccess } from "@/components/ui/form-message";
 import { SubmitButton } from "@/components/ui/submit-button";
@@ -96,13 +97,8 @@ export function LeagueSettingsForm({
       <Field label="Descrição">
         <Textarea name="description" defaultValue={initial.description} />
       </Field>
-      <div className="grid gap-4 sm:grid-cols-[1fr_90px_1fr_1fr]">
-        <Field label="Cidade">
-          <Input name="city" defaultValue={initial.city} />
-        </Field>
-        <Field label="UF">
-          <Input name="state" defaultValue={initial.state} maxLength={2} />
-        </Field>
+      <CityUfFields initial={{ city: initial.city, state: initial.state }} />
+      <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Início">
           <Input name="startDate" type="date" defaultValue={toDateInput(initial.startDate)} />
         </Field>
