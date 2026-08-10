@@ -1,36 +1,75 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🏆 Liga das Igrejas
 
-## Getting Started
+Plataforma completa para administrar campeonatos esportivos entre igrejas: ligas, equipes, atletas, tabelas, resultados e classificação em tempo real.
 
-First, run the development server:
+## Como rodar
 
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+pnpm install
+pnpm db:push    # cria o banco SQLite local
+pnpm db:seed    # (opcional) dados de demonstração
+pnpm dev        # http://localhost:3000
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+**Login de demonstração:** `admin@liga.com` / `123456` — inclui a liga *Copa das Igrejas 2026* com 8 equipes, 7 rodadas geradas e 5 rodadas de resultados registrados.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Stack
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Camada | Tecnologia |
+| --- | --- |
+| Framework | Next.js (App Router, Server Components + Server Actions) |
+| Linguagem | TypeScript |
+| Estilo | Tailwind CSS v4 |
+| Banco | Prisma + SQLite (portável para PostgreSQL trocando o datasource) |
+| Autenticação | Sessão JWT em cookie httpOnly (jose) + bcrypt |
+| Validação | Zod |
 
-## Learn More
+## Arquitetura
 
-To learn more about Next.js, take a look at the following resources:
+```
+src/
+├── app/                      # Rotas (apenas composição de telas)
+│   ├── (auth)/               # Login, cadastro, recuperação de senha
+│   └── (app)/                # Área autenticada
+│       ├── igrejas/          # Cadastro global de igrejas, atletas e comissão
+│       └── ligas/[slug]/     # Dashboard, classificação, rodadas, jogos,
+│                             # minha equipe, equipes, atletas, quadras,
+│                             # agenda, regras, sobre, organização
+├── components/
+│   ├── ui/                   # Kit de componentes reutilizáveis
+│   ├── forms/                # Formulários compartilhados
+│   └── layout/               # Topbar, navegação da liga
+└── lib/
+    ├── domain/               # ⭐ Regras de negócio puras (sem banco/UI):
+    │   ├── standings.ts      #    motor de classificação com desempates configuráveis
+    │   ├── fixtures.ts       #    geração de tabela round-robin (turnos configuráveis)
+    │   ├── rules.ts          #    parsing das regras da liga
+    │   └── enums.ts          #    enums de domínio tipados
+    ├── data/                 # Consultas (React cache por requisição)
+    ├── actions/              # Server Actions (validação Zod + autorização)
+    ├── auth/                 # Sessão e ações de autenticação
+    ├── permissions.ts        # Papéis → capacidades (autorização por capacidade)
+    └── db.ts                 # Cliente Prisma singleton
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### Decisões-chave
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- **Classificação calculada, nunca armazenada** — o motor em `lib/domain/standings.ts` recalcula a tabela a partir das partidas e das regras vigentes; alterar a pontuação nas Regras reflete imediatamente.
+- **Regras 100% configuráveis por liga** — formato, pontuação, turnos, mata-mata, desempates ordenáveis, tempo de jogo, elenco e disciplina ficam em `LeagueRules`, sem mudança de código.
+- **Esporte como entidade** — Futsal é seed; novos esportes = nova linha em `Sport` + posições em `POSITIONS_BY_SPORT`.
+- **Autorização por capacidade** — telas e ações consultam capacidades (`league.manage`, `results.record`…), não papéis; novos papéis não exigem mudanças espalhadas.
+- **Igreja ≠ Equipe** — `Church` é global e participa de várias ligas via `LeagueTeam`, preparado para múltiplas categorias no futuro.
+- **Eventos de partida** (`MatchEvent`) já alimentam artilharia e cartões — base das estatísticas individuais futuras.
 
-## Deploy on Vercel
+## Papéis da organização
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+| Papel | Pode |
+| --- | --- |
+| Dono / Organizador Geral | Tudo: liga, regras, equipes, agenda, resultados |
+| Organizador da Igreja | Dados e elenco da sua igreja |
+| Administrador da Equipe | Elenco: titulares, reservas, comissão |
+| Mesário / Árbitro | Registrar placar, gols e cartões |
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Produção
+
+Para PostgreSQL, altere `datasource db` em `prisma/schema.prisma` (`provider = "postgresql"`) e a `DATABASE_URL` no `.env`. Defina também um `AUTH_SECRET` forte.
