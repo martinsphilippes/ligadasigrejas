@@ -3,7 +3,13 @@ import { logoutAction } from "@/lib/auth/actions";
 import { Avatar } from "@/components/ui/avatar";
 import type { SessionPayload } from "@/lib/auth/session";
 
-export function Topbar({ user }: { user: SessionPayload }) {
+export function Topbar({
+  user,
+  isAdmin = false,
+}: {
+  user: SessionPayload;
+  isAdmin?: boolean;
+}) {
   return (
     <header className="sticky top-0 z-40 border-b border-zinc-200/80 bg-white/85 backdrop-blur-md">
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
@@ -27,6 +33,14 @@ export function Topbar({ user }: { user: SessionPayload }) {
             >
               Igrejas
             </Link>
+            {isAdmin && (
+              <Link
+                href="/admin/usuarios"
+                className="rounded-lg px-3 py-1.5 font-medium text-zinc-600 transition-colors hover:bg-zinc-100 hover:text-zinc-900"
+              >
+                Usuários
+              </Link>
+            )}
           </nav>
         </div>
         <div className="flex items-center gap-3">

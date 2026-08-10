@@ -1,7 +1,49 @@
 import "server-only";
 import { cache } from "react";
 import { db } from "@/lib/db";
-import type { MemberRole } from "@/lib/domain/enums";
+import type { MemberRole, PlatformRole } from "@/lib/domain/enums";
+
+// ─── Papéis de plataforma ────────────────────────────────────────────────────
+
+/** Papel de plataforma do usuário (ADMIN | ORGANIZADOR | MEMBRO). */
+export const getPlatformRole = cache(async (userId: string): Promise<PlatformRole> => {
+  const user = await db.user.findUnique({ where: { id: userId }, select: { role: true } });
+  return (user?.role as PlatformRole) ?? "MEMBRO";
+});
+
+/** Somente organizadores e o admin criam ligas e cadastram igrejas. */
+export function isPlatformOrganizer(role: PlatformRole): boolean {
+  return role === "ADMIN" || role === "ORGANIZADOR";
+}
+
+/**
+ * Pode gerenciar uma igreja (dados, elenco, comissão)?
+ * Sim para: admin/organizador da plataforma; dono de liga em que a igreja
+ * joga; e usuários com papel de igreja (Organizador da Igreja / Admin da
+ * Equipe) vinculado a ela em alguma liga.
+ */
+export const canManageChurch = cache(
+  async (userId: string, churchId: string): Promise<boolean> => {
+    const role = await getPlatformRole(userId);
+    if (isPlatformOrganizer(role)) return true;
+
+    const [scoped, ownsLeague] = await Promise.all([
+      db.leagueMember.findFirst({
+        where: {
+          userId,
+          churchId,
+          role: { in: ["ORGANIZADOR_IGREJA", "ADMIN_EQUIPE"] },
+        },
+        select: { id: true },
+      }),
+      db.league.findFirst({
+        where: { ownerId: userId, teams: { some: { churchId } } },
+        select: { id: true },
+      }),
+    ]);
+    return !!scoped || !!ownsLeague;
+  },
+);
 
 // Capacidades por papel — a autorização das telas e ações consulta capacidades,
 // nunca papéis diretamente, para que novos papéis não exijam mudanças espalhadas.

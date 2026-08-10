@@ -5,7 +5,12 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth/session";
-import { getLeagueAccess, can } from "@/lib/permissions";
+import {
+  getLeagueAccess,
+  can,
+  getPlatformRole,
+  isPlatformOrganizer,
+} from "@/lib/permissions";
 import { slugify } from "@/lib/utils";
 import { LEAGUE_STATUS } from "@/lib/domain/enums";
 
@@ -40,6 +45,10 @@ export async function createLeagueAction(
   formData: FormData,
 ): Promise<ActionState> {
   const user = await requireUser();
+  const role = await getPlatformRole(user.sub);
+  if (!isPlatformOrganizer(role)) {
+    return { error: "Apenas organizadores podem criar ligas. Fale com o administrador da plataforma." };
+  }
   const parsed = leagueSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const data = parsed.data;

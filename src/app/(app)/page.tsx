@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth/session";
+import { getPlatformRole, isPlatformOrganizer } from "@/lib/permissions";
 import { formatDate } from "@/lib/utils";
 import { Avatar } from "@/components/ui/avatar";
 import { LeagueStatusBadge } from "@/components/ui/badge";
@@ -11,6 +12,7 @@ import { PageHeader } from "@/components/ui/page-header";
 
 export default async function HomePage() {
   const user = await requireUser();
+  const organizer = isPlatformOrganizer(await getPlatformRole(user.sub));
 
   const leagues = await db.league.findMany({
     include: {
@@ -37,16 +39,24 @@ export default async function HomePage() {
       <PageHeader
         title="Minhas Ligas"
         description="Campeonatos que você organiza ou participa."
-        actions={<ButtonLink href="/ligas/nova">+ Nova Liga</ButtonLink>}
+        actions={organizer && <ButtonLink href="/ligas/nova">+ Nova Liga</ButtonLink>}
       />
 
       {mine.length === 0 ? (
-        <EmptyState
-          icon="🏆"
-          title="Você ainda não tem nenhuma liga"
-          description="Crie sua primeira liga e comece a organizar o campeonato entre as igrejas."
-          action={<ButtonLink href="/ligas/nova">Criar minha primeira liga</ButtonLink>}
-        />
+        organizer ? (
+          <EmptyState
+            icon="🏆"
+            title="Você ainda não tem nenhuma liga"
+            description="Crie sua primeira liga e comece a organizar o campeonato entre as igrejas."
+            action={<ButtonLink href="/ligas/nova">Criar minha primeira liga</ButtonLink>}
+          />
+        ) : (
+          <EmptyState
+            icon="⛪"
+            title="Você ainda não participa de nenhuma liga"
+            description="Peça ao organizador do campeonato para vincular você à equipe da sua igreja. Enquanto isso, você pode acompanhar as ligas abertas abaixo."
+          />
+        )
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {mine.map((league) => (

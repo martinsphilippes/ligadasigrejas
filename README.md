@@ -64,7 +64,19 @@ src/
 - **Igreja ≠ Equipe** — `Church` é global e participa de várias ligas via `LeagueTeam`, preparado para múltiplas categorias no futuro.
 - **Eventos de partida** (`MatchEvent`) já alimentam artilharia e cartões — base das estatísticas individuais futuras.
 
-## Papéis da organização
+## Papéis
+
+**Na plataforma** (conta do usuário — gerenciados pelo admin em Usuários):
+
+| Papel | Pode |
+| --- | --- |
+| Administrador | Tudo, incluindo promover/rebaixar usuários |
+| Organizador | Criar ligas e cadastrar/gerenciar igrejas |
+| Membro (padrão) | Participar e acompanhar — sem criar ligas ou igrejas |
+
+A primeira conta criada na plataforma vira automaticamente o Administrador.
+
+**Dentro de cada liga** (atribuídos na tela Organização):
 
 | Papel | Pode |
 | --- | --- |

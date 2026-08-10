@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { db } from "@/lib/db";
+import { requireUser } from "@/lib/auth/session";
+import { getPlatformRole, isPlatformOrganizer } from "@/lib/permissions";
 import { Avatar } from "@/components/ui/avatar";
 import { ButtonLink } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
@@ -10,6 +12,8 @@ import { PageHeader } from "@/components/ui/page-header";
 export const metadata: Metadata = { title: "Igrejas" };
 
 export default async function ChurchesPage() {
+  const user = await requireUser();
+  const organizer = isPlatformOrganizer(await getPlatformRole(user.sub));
   const churches = await db.church.findMany({
     include: { _count: { select: { athletes: true, leagueTeams: true } } },
     orderBy: { name: "asc" },
@@ -20,15 +24,19 @@ export default async function ChurchesPage() {
       <PageHeader
         title="Igrejas"
         description="Todas as igrejas cadastradas na plataforma. Cada igreja pode participar de várias ligas."
-        actions={<ButtonLink href="/igrejas/nova">+ Nova Igreja</ButtonLink>}
+        actions={organizer && <ButtonLink href="/igrejas/nova">+ Nova Igreja</ButtonLink>}
       />
 
       {churches.length === 0 ? (
         <EmptyState
           icon="⛪"
           title="Nenhuma igreja cadastrada"
-          description="Cadastre a primeira igreja para montar as equipes do campeonato."
-          action={<ButtonLink href="/igrejas/nova">Cadastrar igreja</ButtonLink>}
+          description={
+            organizer
+              ? "Cadastre a primeira igreja para montar as equipes do campeonato."
+              : "Os organizadores ainda não cadastraram nenhuma igreja."
+          }
+          action={organizer && <ButtonLink href="/igrejas/nova">Cadastrar igreja</ButtonLink>}
         />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

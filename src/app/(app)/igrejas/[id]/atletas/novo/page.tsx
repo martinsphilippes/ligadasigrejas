@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { db } from "@/lib/db";
+import { requireUser } from "@/lib/auth/session";
+import { canManageChurch } from "@/lib/permissions";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { createAthleteAction } from "@/lib/actions/church";
@@ -14,8 +16,10 @@ export default async function NewAthletePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const user = await requireUser();
   const church = await db.church.findUnique({ where: { id } });
   if (!church) notFound();
+  if (!(await canManageChurch(user.sub, church.id))) redirect(`/igrejas/${church.id}`);
 
   return (
     <main className="mx-auto max-w-2xl px-4 py-8 sm:px-6">

@@ -2,6 +2,12 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
+import { requireUser } from "@/lib/auth/session";
+import {
+  canManageChurch,
+  getPlatformRole,
+  isPlatformOrganizer,
+} from "@/lib/permissions";
 import { Avatar } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { ButtonLink } from "@/components/ui/button";
@@ -22,6 +28,7 @@ export default async function ChurchPage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = await params;
+  const user = await requireUser();
   const church = await db.church.findUnique({
     where: { id },
     include: {
@@ -32,6 +39,10 @@ export default async function ChurchPage({
   });
   if (!church) notFound();
 
+  const [manage, organizer] = await Promise.all([
+    canManageChurch(user.sub, church.id),
+    getPlatformRole(user.sub).then(isPlatformOrganizer),
+  ]);
   const titulares = church.athletes.filter((a) => a.squadRole === "TITULAR");
   const reservas = church.athletes.filter((a) => a.squadRole !== "TITULAR");
 
@@ -56,12 +67,14 @@ export default async function ChurchPage({
             )}
           </div>
         </div>
-        <div className="flex gap-2">
-          <ButtonLink variant="secondary" href={`/igrejas/${church.id}/editar`}>
-            Editar
-          </ButtonLink>
-          <ButtonLink href={`/igrejas/${church.id}/atletas/novo`}>+ Atleta</ButtonLink>
-        </div>
+        {manage && (
+          <div className="flex gap-2">
+            <ButtonLink variant="secondary" href={`/igrejas/${church.id}/editar`}>
+              Editar
+            </ButtonLink>
+            <ButtonLink href={`/igrejas/${church.id}/atletas/novo`}>+ Atleta</ButtonLink>
+          </div>
+        )}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
@@ -78,7 +91,7 @@ export default async function ChurchPage({
             ) : (
               <div className="grid gap-2 sm:grid-cols-2">
                 {titulares.map((a) => (
-                  <AthleteCard key={a.id} athlete={a} canManage />
+                  <AthleteCard key={a.id} athlete={a} canManage={manage} />
                 ))}
               </div>
             )}
@@ -94,11 +107,17 @@ export default async function ChurchPage({
                 <EmptyState
                   icon="👟"
                   title="Elenco vazio"
-                  description="Cadastre os atletas da igreja para montar a equipe."
+                  description={
+                    manage
+                      ? "Cadastre os atletas da igreja para montar a equipe."
+                      : "Os atletas desta igreja ainda não foram cadastrados."
+                  }
                   action={
-                    <ButtonLink href={`/igrejas/${church.id}/atletas/novo`}>
-                      Cadastrar atleta
-                    </ButtonLink>
+                    manage && (
+                      <ButtonLink href={`/igrejas/${church.id}/atletas/novo`}>
+                        Cadastrar atleta
+                      </ButtonLink>
+                    )
                   }
                 />
               ) : (
@@ -109,7 +128,7 @@ export default async function ChurchPage({
             ) : (
               <div className="grid gap-2 sm:grid-cols-2">
                 {reservas.map((a) => (
-                  <AthleteCard key={a.id} athlete={a} canManage />
+                  <AthleteCard key={a.id} athlete={a} canManage={manage} />
                 ))}
               </div>
             )}
@@ -130,21 +149,29 @@ export default async function ChurchPage({
                         <p className="truncate text-sm font-medium text-zinc-900">{s.name}</p>
                         <p className="text-xs text-zinc-500">{s.role}</p>
                       </div>
-                      <form action={deleteStaffAction.bind(null, s.id)}>
-                        <ConfirmButton
-                          variant="ghost"
-                          size="sm"
-                          className="h-auto px-2 py-1 text-[11px] text-red-500 hover:bg-red-50"
-                          message={`Remover ${s.name} da comissão?`}
-                        >
-                          Remover
-                        </ConfirmButton>
-                      </form>
+                      {manage && (
+                        <form action={deleteStaffAction.bind(null, s.id)}>
+                          <ConfirmButton
+                            variant="ghost"
+                            size="sm"
+                            className="h-auto px-2 py-1 text-[11px] text-red-500 hover:bg-red-50"
+                            message={`Remover ${s.name} da comissão?`}
+                          >
+                            Remover
+                          </ConfirmButton>
+                        </form>
+                      )}
                     </li>
                   ))}
                 </ul>
               )}
-              <StaffForm action={createStaffAction.bind(null, church.id)} />
+              {manage ? (
+                <StaffForm action={createStaffAction.bind(null, church.id)} />
+              ) : (
+                church.staff.length === 0 && (
+                  <p className="text-sm text-zinc-400">Comissão ainda não cadastrada.</p>
+                )
+              )}
             </CardContent>
           </Card>
         </div>
@@ -203,16 +230,18 @@ export default async function ChurchPage({
             </CardContent>
           </Card>
 
-          <form action={deleteChurchAction.bind(null, church.id)} className="text-right">
-            <ConfirmButton
-              variant="ghost"
-              size="sm"
-              className="text-red-500 hover:bg-red-50 hover:text-red-700"
-              message={`Excluir a igreja ${church.name}? Todos os atletas e participações em ligas serão removidos.`}
-            >
-              Excluir igreja
-            </ConfirmButton>
-          </form>
+          {organizer && (
+            <form action={deleteChurchAction.bind(null, church.id)} className="text-right">
+              <ConfirmButton
+                variant="ghost"
+                size="sm"
+                className="text-red-500 hover:bg-red-50 hover:text-red-700"
+                message={`Excluir a igreja ${church.name}? Todos os atletas e participações em ligas serão removidos.`}
+              >
+                Excluir igreja
+              </ConfirmButton>
+            </form>
+          )}
         </div>
       </div>
     </main>

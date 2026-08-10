@@ -37,8 +37,16 @@ export async function registerAction(
   const existing = await db.user.findUnique({ where: { email } });
   if (existing) return { error: "Já existe uma conta com este e-mail." };
 
+  // A primeira conta criada é o administrador da plataforma; as demais
+  // entram como membros e podem ser promovidas pelo admin.
+  const isFirstUser = (await db.user.count()) === 0;
   const user = await db.user.create({
-    data: { name, email, passwordHash: await bcrypt.hash(password, 10) },
+    data: {
+      name,
+      email,
+      passwordHash: await bcrypt.hash(password, 10),
+      role: isFirstUser ? "ADMIN" : "MEMBRO",
+    },
   });
 
   await createSession({ sub: user.id, name: user.name, email: user.email });

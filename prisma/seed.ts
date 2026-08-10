@@ -44,11 +44,12 @@ async function main() {
   // Usuário administrador
   const admin = await db.user.upsert({
     where: { email: "admin@liga.com" },
-    update: {},
+    update: { role: "ADMIN" },
     create: {
       name: "Administrador da Liga",
       email: "admin@liga.com",
       passwordHash: await bcrypt.hash("123456", 10),
+      role: "ADMIN",
     },
   });
 

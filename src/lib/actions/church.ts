@@ -5,7 +5,21 @@ import { redirect } from "next/navigation";
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth/session";
+import {
+  canManageChurch,
+  getPlatformRole,
+  isPlatformOrganizer,
+} from "@/lib/permissions";
 import type { ActionState } from "./league";
+
+/** Exige permissão de gestão sobre a igreja; lança erro caso contrário. */
+async function requireChurchManager(churchId: string) {
+  const user = await requireUser();
+  if (!(await canManageChurch(user.sub, churchId))) {
+    throw new Error("Sem permissão para gerenciar esta igreja.");
+  }
+  return user;
+}
 
 const optional = (schema: z.ZodString) =>
   z.preprocess((v) => (v === "" || v == null ? undefined : v), schema.optional());
@@ -29,7 +43,10 @@ export async function createChurchAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  await requireUser();
+  const user = await requireUser();
+  if (!isPlatformOrganizer(await getPlatformRole(user.sub))) {
+    return { error: "Apenas organizadores podem cadastrar igrejas." };
+  }
   const parsed = churchSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
@@ -45,7 +62,11 @@ export async function updateChurchAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  await requireUser();
+  try {
+    await requireChurchManager(churchId);
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Sem permissão." };
+  }
   const parsed = churchSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const d = parsed.data;
@@ -72,7 +93,9 @@ export async function updateChurchAction(
 }
 
 export async function deleteChurchAction(churchId: string) {
-  await requireUser();
+  const user = await requireUser();
+  // Excluir igreja é ato de organizador (remove atletas e participações).
+  if (!isPlatformOrganizer(await getPlatformRole(user.sub))) return;
   await db.church.delete({ where: { id: churchId } });
   revalidatePath("/igrejas");
   redirect("/igrejas");
@@ -106,7 +129,11 @@ export async function createAthleteAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  await requireUser();
+  try {
+    await requireChurchManager(churchId);
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Sem permissão." };
+  }
   const parsed = athleteSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const d = parsed.data;
@@ -134,7 +161,13 @@ export async function updateAthleteAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  await requireUser();
+  const existing = await db.athlete.findUnique({ where: { id: athleteId } });
+  if (!existing) return { error: "Atleta não encontrado." };
+  try {
+    await requireChurchManager(existing.churchId);
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Sem permissão." };
+  }
   const parsed = athleteSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
   const d = parsed.data;
@@ -159,8 +192,8 @@ export async function updateAthleteAction(
 
 /** Alterna atleta entre titular e reserva (organização da equipe). */
 export async function toggleSquadRoleAction(athleteId: string) {
-  await requireUser();
   const athlete = await db.athlete.findUniqueOrThrow({ where: { id: athleteId } });
+  await requireChurchManager(athlete.churchId);
   await db.athlete.update({
     where: { id: athleteId },
     data: { squadRole: athlete.squadRole === "TITULAR" ? "RESERVA" : "TITULAR" },
@@ -169,7 +202,8 @@ export async function toggleSquadRoleAction(athleteId: string) {
 }
 
 export async function deleteAthleteAction(athleteId: string) {
-  await requireUser();
+  const existing = await db.athlete.findUniqueOrThrow({ where: { id: athleteId } });
+  await requireChurchManager(existing.churchId);
   const athlete = await db.athlete.delete({ where: { id: athleteId } });
   revalidatePath(`/igrejas/${athlete.churchId}`, "layout");
 }
@@ -188,7 +222,11 @@ export async function createStaffAction(
   _prev: ActionState,
   formData: FormData,
 ): Promise<ActionState> {
-  await requireUser();
+  try {
+    await requireChurchManager(churchId);
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Sem permissão." };
+  }
   const parsed = staffSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
 
@@ -198,7 +236,8 @@ export async function createStaffAction(
 }
 
 export async function deleteStaffAction(staffId: string) {
-  await requireUser();
+  const existing = await db.staffMember.findUniqueOrThrow({ where: { id: staffId } });
+  await requireChurchManager(existing.churchId);
   const staff = await db.staffMember.delete({ where: { id: staffId } });
   revalidatePath(`/igrejas/${staff.churchId}`, "layout");
 }

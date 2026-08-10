@@ -54,6 +54,20 @@ export const SQUAD_ROLE = {
 } as const;
 export type SquadRole = keyof typeof SQUAD_ROLE;
 
+// Papéis de plataforma (conta do usuário) — diferentes dos papéis por liga.
+export const PLATFORM_ROLE = {
+  ADMIN: "Administrador da plataforma",
+  ORGANIZADOR: "Organizador",
+  MEMBRO: "Membro",
+} as const;
+export type PlatformRole = keyof typeof PLATFORM_ROLE;
+
+export const PLATFORM_ROLE_DESCRIPTIONS: Record<PlatformRole, string> = {
+  ADMIN: "Gerencia usuários e tudo na plataforma, incluindo ligas e igrejas.",
+  ORGANIZADOR: "Pode criar ligas, cadastrar igrejas e administrar campeonatos.",
+  MEMBRO: "Participa como atleta/membro de uma igreja e acompanha as ligas.",
+};
+
 export const MEMBER_ROLE = {
   ORGANIZADOR_GERAL: "Organizador Geral",
   ORGANIZADOR_IGREJA: "Organizador da Igreja",
