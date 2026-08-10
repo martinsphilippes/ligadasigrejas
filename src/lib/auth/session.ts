@@ -59,10 +59,21 @@ export const getSession = cache(async (): Promise<SessionPayload | null> => {
   }
 });
 
-/** Exige usuário autenticado; redireciona para /login caso contrário. */
+/** Sessão aponta para um usuário que realmente existe? Cacheado por requisição. */
+const sessionUserExists = cache(async (userId: string): Promise<boolean> => {
+  const user = await db.user.findUnique({ where: { id: userId }, select: { id: true } });
+  return !!user;
+});
+
+/**
+ * Exige usuário autenticado; redireciona para /login caso contrário.
+ * Sessões órfãs (JWT válido de usuário inexistente — ex.: banco trocado)
+ * são encerradas via /sair para forçar novo login.
+ */
 export async function requireUser(): Promise<SessionPayload> {
   const session = await getSession();
   if (!session) redirect("/login");
+  if (!(await sessionUserExists(session.sub))) redirect("/sair");
   return session;
 }
 
