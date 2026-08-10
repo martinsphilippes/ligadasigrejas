@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { getLeagueContext } from "@/lib/data/league";
-import { getStandings, getLeagueTopScorers } from "@/lib/data/standings";
+import { getStandings, getStandingsByGroup, getLeagueTopScorers } from "@/lib/data/standings";
 import { parseTiebreakers } from "@/lib/domain/rules";
 import { TIEBREAKER } from "@/lib/domain/enums";
 import { Avatar } from "@/components/ui/avatar";
@@ -18,11 +18,13 @@ export default async function StandingsPage({
 }) {
   const { slug } = await params;
   const { league } = await getLeagueContext(slug);
-  const [standings, topScorers] = await Promise.all([
+  const [standings, byGroup, topScorers] = await Promise.all([
     getStandings(league.id),
+    getStandingsByGroup(league.id),
     getLeagueTopScorers(league.id, 5),
   ]);
   const tiebreakers = parseTiebreakers(league.rules?.tiebreakers);
+  const hasGroups = byGroup.size > 1;
 
   return (
     <div>
@@ -39,7 +41,18 @@ export default async function StandingsPage({
         />
       ) : (
         <div className="space-y-6">
-          <StandingsTable standings={standings} leagueSlug={league.slug} />
+          {hasGroups ? (
+            [...byGroup.entries()].map(([group, rows]) => (
+              <section key={group}>
+                <h2 className="mb-3 text-sm font-bold uppercase tracking-wide text-zinc-700">
+                  Grupo {group}
+                </h2>
+                <StandingsTable standings={rows} leagueSlug={league.slug} />
+              </section>
+            ))
+          ) : (
+            <StandingsTable standings={standings} leagueSlug={league.slug} />
+          )}
 
           <div className="grid gap-6 lg:grid-cols-2">
             <Card>

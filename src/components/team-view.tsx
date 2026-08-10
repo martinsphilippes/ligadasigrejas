@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { getStandings } from "@/lib/data/standings";
+import { getTeamDiscipline } from "@/lib/data/suspensions";
 import { COUNTED_STATUSES } from "@/lib/domain/enums";
 import { Avatar } from "@/components/ui/avatar";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -24,7 +25,7 @@ export async function TeamView({
   teamId: string;
   canManageSquad: boolean;
 }) {
-  const [team, standings, matches] = await Promise.all([
+  const [team, standings, matches, discipline] = await Promise.all([
     db.leagueTeam.findUnique({
       where: { id: teamId },
       include: {
@@ -53,6 +54,7 @@ export async function TeamView({
       },
       orderBy: { scheduledAt: "asc" },
     }),
+    getTeamDiscipline(leagueId, teamId),
   ]);
 
   if (!team || team.leagueId !== leagueId) return null;
@@ -145,6 +147,55 @@ export async function TeamView({
           />
           <StatCard label="Aproveit." value={`${campaign.efficiency}%`} />
         </div>
+      )}
+
+      {/* Situação disciplinar */}
+      {(discipline.suspended.length > 0 || discipline.hanging.length > 0) && (
+        <Card>
+          <CardHeader>
+            <CardTitle>🟨 Situação disciplinar</CardTitle>
+          </CardHeader>
+          <CardContent className="grid gap-4 sm:grid-cols-2">
+            {discipline.suspended.length > 0 && (
+              <div>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-red-600">
+                  Suspensos para o próximo jogo
+                </p>
+                <ul className="space-y-1.5">
+                  {discipline.suspended.map((s) => (
+                    <li
+                      key={s.athleteId}
+                      className="flex items-center gap-2.5 rounded-lg bg-red-50 px-3 py-2"
+                    >
+                      <Avatar name={s.athleteName} src={s.photoUrl} size="xs" />
+                      <span className="text-sm font-medium text-zinc-800">{s.athleteName}</span>
+                      <span className="ml-auto text-xs text-red-600">{s.reason}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+            {discipline.hanging.length > 0 && (
+              <div>
+                <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-amber-600">
+                  Pendurados
+                </p>
+                <ul className="space-y-1.5">
+                  {discipline.hanging.map((s) => (
+                    <li
+                      key={s.athleteId}
+                      className="flex items-center gap-2.5 rounded-lg bg-amber-50 px-3 py-2"
+                    >
+                      <Avatar name={s.athleteName} src={s.photoUrl} size="xs" />
+                      <span className="text-sm font-medium text-zinc-800">{s.athleteName}</span>
+                      <span className="ml-auto text-xs text-amber-600">{s.reason}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </CardContent>
+        </Card>
       )}
 
       <div className="grid gap-6 xl:grid-cols-2">

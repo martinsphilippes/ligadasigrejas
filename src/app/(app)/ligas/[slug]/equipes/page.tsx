@@ -8,8 +8,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ConfirmButton } from "@/components/ui/confirm-button";
 import { EmptyState } from "@/components/ui/empty-state";
 import { PageHeader } from "@/components/ui/page-header";
-import { removeTeamAction } from "@/lib/actions/schedule";
+import { removeTeamAction, setTeamGroupAction } from "@/lib/actions/schedule";
 import { EnrollForm } from "./enroll-form";
+
+const GROUP_OPTIONS = ["A", "B", "C", "D", "E", "F", "G", "H"];
 
 export const metadata: Metadata = { title: "Equipes" };
 
@@ -21,6 +23,8 @@ export default async function TeamsPage({
   const { slug } = await params;
   const { league, access } = await getLeagueContext(slug);
   const manage = can(access, "teams.manage");
+  const usesGroups =
+    league.rules?.format === "GRUPOS" || league.rules?.format === "GRUPOS_MATA_MATA";
 
   const [teams, allChurches] = await Promise.all([
     getLeagueTeams(league.id),
@@ -95,19 +99,46 @@ export default async function TeamsPage({
                 </div>
               </Link>
               {manage && (
-                <form
-                  action={removeTeamAction.bind(null, league.id, team.id)}
-                  className="mt-3 border-t border-zinc-100 pt-2 text-right"
-                >
-                  <ConfirmButton
-                    variant="ghost"
-                    size="sm"
-                    className="h-auto px-2 py-1 text-[11px] text-red-500 hover:bg-red-50"
-                    message={`Remover ${team.church.name} da liga? Os jogos desta equipe serão excluídos.`}
-                  >
-                    Remover da liga
-                  </ConfirmButton>
-                </form>
+                <div className="mt-3 flex items-center justify-between gap-2 border-t border-zinc-100 pt-2">
+                  {usesGroups ? (
+                    <form
+                      action={setTeamGroupAction.bind(null, league.id, team.id)}
+                      className="flex items-center gap-1.5"
+                    >
+                      <label className="text-[11px] font-medium text-zinc-400">Grupo</label>
+                      <select
+                        name="group"
+                        defaultValue={team.group ?? ""}
+                        className="rounded-md border border-zinc-200 bg-white px-1.5 py-1 text-xs text-zinc-700"
+                      >
+                        <option value="">—</option>
+                        {GROUP_OPTIONS.map((g) => (
+                          <option key={g} value={g}>
+                            {g}
+                          </option>
+                        ))}
+                      </select>
+                      <button
+                        type="submit"
+                        className="rounded-md px-2 py-1 text-[11px] font-semibold text-brand-700 hover:bg-brand-50"
+                      >
+                        OK
+                      </button>
+                    </form>
+                  ) : (
+                    <span />
+                  )}
+                  <form action={removeTeamAction.bind(null, league.id, team.id)}>
+                    <ConfirmButton
+                      variant="ghost"
+                      size="sm"
+                      className="h-auto px-2 py-1 text-[11px] text-red-500 hover:bg-red-50"
+                      message={`Remover ${team.church.name} da liga? Os jogos desta equipe serão excluídos.`}
+                    >
+                      Remover da liga
+                    </ConfirmButton>
+                  </form>
+                </div>
               )}
             </Card>
           ))}

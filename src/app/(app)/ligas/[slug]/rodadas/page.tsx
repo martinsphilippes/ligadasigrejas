@@ -10,6 +10,9 @@ import { PageHeader } from "@/components/ui/page-header";
 import { MatchCard } from "@/components/match-card";
 import { clearFixturesAction } from "@/lib/actions/schedule";
 import { GenerateFixturesButton } from "./generate-fixtures";
+import { GeneratePlayoffsButton } from "./generate-playoffs";
+
+const KNOCKOUT_PHASES = ["OITAVAS", "QUARTAS", "SEMIFINAL", "FINAL"];
 
 export const metadata: Metadata = { title: "Rodadas" };
 
@@ -38,6 +41,17 @@ export default async function RoundsPage({
     orderBy: { number: "asc" },
   });
 
+  const teamCount = await db.leagueTeam.count({ where: { leagueId: league.id } });
+  const hasKnockout = rounds.some((r) => KNOCKOUT_PHASES.includes(r.phase));
+  // Fase final faz sentido quando a tabela já existe e o formato prevê
+  // mata-mata (ou quando o chaveamento já começou e precisa avançar).
+  const showPlayoffs =
+    manage &&
+    rounds.length > 0 &&
+    (hasKnockout ||
+      league.rules?.format === "GRUPOS_MATA_MATA" ||
+      league.rules?.format === "MATA_MATA");
+
   return (
     <div>
       <PageHeader
@@ -58,7 +72,14 @@ export default async function RoundsPage({
                   </ConfirmButton>
                 </form>
               )}
-              <GenerateFixturesButton leagueId={league.id} />
+              {showPlayoffs && (
+                <GeneratePlayoffsButton
+                  leagueId={league.id}
+                  hasKnockout={hasKnockout}
+                  maxTeams={teamCount}
+                />
+              )}
+              {rounds.length === 0 && <GenerateFixturesButton leagueId={league.id} />}
             </>
           )
         }

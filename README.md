@@ -43,6 +43,7 @@ src/
     ├── domain/               # ⭐ Regras de negócio puras (sem banco/UI):
     │   ├── standings.ts      #    motor de classificação com desempates configuráveis
     │   ├── fixtures.ts       #    geração de tabela round-robin (turnos configuráveis)
+    │   ├── knockout.ts       #    chaveamento de mata-mata (bracket, agregado, pênaltis, W.O.)
     │   ├── rules.ts          #    parsing das regras da liga
     │   └── enums.ts          #    enums de domínio tipados
     ├── data/                 # Consultas (React cache por requisição)
@@ -56,6 +57,8 @@ src/
 
 - **Classificação calculada, nunca armazenada** — o motor em `lib/domain/standings.ts` recalcula a tabela a partir das partidas e das regras vigentes; alterar a pontuação nas Regras reflete imediatamente.
 - **Regras 100% configuráveis por liga** — formato, pontuação, turnos, mata-mata, desempates ordenáveis, tempo de jogo, elenco e disciplina ficam em `LeagueRules`, sem mudança de código.
+- **Formatos de campeonato funcionais** — pontos corridos, fase de grupos (round-robin por grupo, tabela por grupo), mata-mata puro e grupos + mata-mata. O chaveamento usa ordem de bracket padrão (1×8, 4×5…), respeita ida e volta, decide por agregado → pênaltis → W.O. e avança fase a fase até apontar o campeão.
+- **Disciplina automática** — suspensos (vermelho ou acúmulo de amarelos conforme as regras) e pendurados aparecem na página da equipe.
 - **Esporte como entidade** — Futsal é seed; novos esportes = nova linha em `Sport` + posições em `POSITIONS_BY_SPORT`.
 - **Autorização por capacidade** — telas e ações consultam capacidades (`league.manage`, `results.record`…), não papéis; novos papéis não exigem mudanças espalhadas.
 - **Igreja ≠ Equipe** — `Church` é global e participa de várias ligas via `LeagueTeam`, preparado para múltiplas categorias no futuro.

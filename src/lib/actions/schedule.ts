@@ -7,7 +7,15 @@ import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth/session";
 import { getLeagueAccess, can } from "@/lib/permissions";
 import { generateRoundRobin } from "@/lib/domain/fixtures";
-import { MATCH_STATUS, EVENT_TYPE } from "@/lib/domain/enums";
+import {
+  pairSeeds,
+  phaseForCount,
+  interleaveGroups,
+  resolveTieWinner,
+  VALID_BRACKET_SIZES,
+} from "@/lib/domain/knockout";
+import { getStandings, getStandingsByGroup } from "@/lib/data/standings";
+import { MATCH_STATUS, EVENT_TYPE, ROUND_PHASE } from "@/lib/domain/enums";
 import type { ActionState } from "./league";
 
 const optional = (schema: z.ZodString) =>
@@ -52,6 +60,22 @@ export async function enrollChurchAction(
 export async function removeTeamAction(leagueId: string, teamId: string) {
   const { league } = await authorize(leagueId, "teams.manage");
   await db.leagueTeam.deleteMany({ where: { id: teamId, leagueId } });
+  revalidateLeague(league.slug);
+}
+
+/** Define o grupo da equipe na fase de grupos (vazio = sem grupo). */
+export async function setTeamGroupAction(
+  leagueId: string,
+  teamId: string,
+  formData: FormData,
+) {
+  const { league } = await authorize(leagueId, "teams.manage");
+  const raw = formData.get("group");
+  const group =
+    typeof raw === "string" && raw.trim() !== ""
+      ? raw.trim().toUpperCase().slice(0, 2)
+      : null;
+  await db.leagueTeam.updateMany({ where: { id: teamId, leagueId }, data: { group } });
   revalidateLeague(league.slug);
 }
 
@@ -126,7 +150,11 @@ export async function deleteVenueAction(leagueId: string, venueId: string) {
 
 // ─── Geração de tabela e rodadas ─────────────────────────────────────────────
 
-/** Gera automaticamente todas as rodadas (round-robin) conforme as regras da liga. */
+/**
+ * Gera automaticamente a tabela conforme o formato configurado nas Regras:
+ * pontos corridos (round-robin geral), fase de grupos (round-robin por grupo)
+ * ou mata-mata (primeira fase do chaveamento com todas as equipes).
+ */
 export async function generateFixturesAction(
   leagueId: string,
   _prev: ActionState,
@@ -136,7 +164,7 @@ export async function generateFixturesAction(
     const { league } = await authorize(leagueId, "schedule.manage");
 
     const [teams, rules, existing] = await Promise.all([
-      db.leagueTeam.findMany({ where: { leagueId } }),
+      db.leagueTeam.findMany({ where: { leagueId }, orderBy: { createdAt: "asc" } }),
       db.leagueRules.findUnique({ where: { leagueId } }),
       db.match.count({ where: { leagueId } }),
     ]);
@@ -146,20 +174,63 @@ export async function generateFixturesAction(
       return { error: "Já existem jogos criados. Exclua os jogos atuais antes de gerar uma nova tabela." };
     }
 
-    const rounds = generateRoundRobin(
-      teams.map((t) => t.id),
-      rules?.legs ?? 1,
-    );
+    const format = rules?.format ?? "PONTOS_CORRIDOS";
 
+    if (format === "MATA_MATA") {
+      // Chaveamento direto: seeds pela ordem de inscrição.
+      return createKnockoutPhase(
+        leagueId,
+        league.slug,
+        pairSeeds(teams.map((t) => t.id)),
+        rules?.playoffLegs ?? 1,
+        1,
+      );
+    }
+
+    const usesGroups = format === "GRUPOS" || format === "GRUPOS_MATA_MATA";
+    const groups = new Map<string, string[]>();
+    if (usesGroups) {
+      for (const team of teams) {
+        if (!team.group) {
+          return {
+            error:
+              "O formato usa fase de grupos: defina o grupo de cada equipe na tela Equipes antes de gerar a tabela.",
+          };
+        }
+        groups.set(team.group, [...(groups.get(team.group) ?? []), team.id]);
+      }
+      if (groups.size < 2) {
+        return { error: "Distribua as equipes em pelo menos 2 grupos diferentes." };
+      }
+      for (const [g, ids] of groups) {
+        if (ids.length < 2) return { error: `O grupo ${g} precisa de pelo menos 2 equipes.` };
+      }
+    }
+
+    const legs = rules?.legs ?? 1;
+    // Round-robin geral, ou por grupo com rodadas de mesmo número mescladas.
+    const mergedRounds = new Map<number, { homeTeamId: string; awayTeamId: string }[]>();
+    const pools = usesGroups ? [...groups.values()] : [teams.map((t) => t.id)];
+    for (const pool of pools) {
+      for (const round of generateRoundRobin(pool, legs)) {
+        mergedRounds.set(round.number, [
+          ...(mergedRounds.get(round.number) ?? []),
+          ...round.matches,
+        ]);
+      }
+    }
+
+    const phase = usesGroups ? "GRUPOS" : "PONTOS_CORRIDOS";
     await db.$transaction(async (tx) => {
-      for (const round of rounds) {
+      for (const [number, matches] of [...mergedRounds.entries()].sort(([a], [b]) => a - b)) {
         await tx.round.create({
           data: {
             leagueId,
-            number: round.number,
-            name: `Rodada ${round.number}`,
+            number,
+            name: `Rodada ${number}`,
+            phase,
             matches: {
-              create: round.matches.map((m) => ({
+              create: matches.map((m) => ({
                 leagueId,
                 homeTeamId: m.homeTeamId,
                 awayTeamId: m.awayTeamId,
@@ -170,12 +241,181 @@ export async function generateFixturesAction(
       }
     });
 
+    const totalMatches = [...mergedRounds.values()].reduce((n, ms) => n + ms.length, 0);
     revalidateLeague(league.slug);
-    return {
-      success: `Tabela gerada: ${rounds.length} rodadas e ${rounds.reduce((n, r) => n + r.matches.length, 0)} jogos.`,
-    };
+    return { success: `Tabela gerada: ${mergedRounds.size} rodadas e ${totalMatches} jogos.` };
   } catch (e) {
     return { error: e instanceof Error ? e.message : "Erro ao gerar tabela." };
+  }
+}
+
+/** Cria os jogos de uma fase de mata-mata (ida e volta opcional) a partir dos confrontos. */
+async function createKnockoutPhase(
+  leagueId: string,
+  slug: string,
+  pairs: [string, string][],
+  playoffLegs: number,
+  startRoundNumber: number,
+): Promise<ActionState> {
+  const phase = phaseForCount(pairs.length * 2);
+  if (!phase) {
+    return {
+      error: `Mata-mata exige ${VALID_BRACKET_SIZES.join(", ")} equipes — há ${pairs.length * 2} classificadas.`,
+    };
+  }
+
+  const phaseName = ROUND_PHASE[phase];
+
+  await db.$transaction(async (tx) => {
+    const ida = await tx.round.create({
+      data: {
+        leagueId,
+        number: startRoundNumber,
+        name: playoffLegs === 2 ? `${phaseName} — Ida` : phaseName,
+        phase,
+      },
+    });
+    for (const [seedHigh, seedLow] of pairs) {
+      // Ida: melhor seed fora de casa (decide em casa na volta); jogo único: melhor seed em casa.
+      await tx.match.create({
+        data: {
+          leagueId,
+          roundId: ida.id,
+          homeTeamId: playoffLegs === 2 ? seedLow : seedHigh,
+          awayTeamId: playoffLegs === 2 ? seedHigh : seedLow,
+        },
+      });
+    }
+    if (playoffLegs === 2) {
+      const volta = await tx.round.create({
+        data: {
+          leagueId,
+          number: startRoundNumber + 1,
+          name: `${phaseName} — Volta`,
+          phase,
+        },
+      });
+      for (const [seedHigh, seedLow] of pairs) {
+        await tx.match.create({
+          data: {
+            leagueId,
+            roundId: volta.id,
+            homeTeamId: seedHigh,
+            awayTeamId: seedLow,
+          },
+        });
+      }
+    }
+  });
+
+  revalidateLeague(slug);
+  return {
+    success: `${phaseName} gerada com ${pairs.length} confronto(s)${playoffLegs === 2 ? " (ida e volta)" : ""}. Defina datas e quadras na Agenda.`,
+  };
+}
+
+const KNOCKOUT_PHASES = ["OITAVAS", "QUARTAS", "SEMIFINAL", "FINAL"];
+
+/**
+ * Gera a fase final (a partir da classificação) ou a próxima fase do
+ * mata-mata (a partir dos vencedores da fase anterior).
+ */
+export async function generatePlayoffsAction(
+  leagueId: string,
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  try {
+    const { league } = await authorize(leagueId, "schedule.manage");
+    const rules = await db.leagueRules.findUnique({ where: { leagueId } });
+    const playoffLegs = rules?.playoffLegs ?? 1;
+
+    const knockoutRounds = await db.round.findMany({
+      where: { leagueId, phase: { in: KNOCKOUT_PHASES } },
+      include: { matches: { orderBy: { createdAt: "asc" } } },
+      orderBy: { number: "asc" },
+    });
+    const lastRoundNumber = await db.round
+      .aggregate({ where: { leagueId }, _max: { number: true } })
+      .then((r) => r._max.number ?? 0);
+
+    if (knockoutRounds.length === 0) {
+      // Primeira fase: classifica pela tabela (por grupo, se houver).
+      const qualifiedCount = Number(formData.get("qualifiedCount") ?? 4);
+      if (!VALID_BRACKET_SIZES.includes(qualifiedCount)) {
+        return { error: "Quantidade de classificados inválida (2, 4, 8 ou 16)." };
+      }
+
+      const byGroup = await getStandingsByGroup(leagueId);
+      let seeds: string[];
+      if (byGroup.size > 1) {
+        const perGroup = qualifiedCount / byGroup.size;
+        if (!Number.isInteger(perGroup) || perGroup < 1) {
+          return {
+            error: `${qualifiedCount} classificados não dividem igualmente entre ${byGroup.size} grupos.`,
+          };
+        }
+        seeds = interleaveGroups(
+          [...byGroup.values()].map((rows) => rows.slice(0, perGroup).map((r) => r.teamId)),
+        );
+      } else {
+        const standings = await getStandings(leagueId);
+        if (standings.length < qualifiedCount) {
+          return { error: "Há menos equipes na liga do que classificados solicitados." };
+        }
+        seeds = standings.slice(0, qualifiedCount).map((r) => r.teamId);
+      }
+
+      return createKnockoutPhase(
+        leagueId,
+        league.slug,
+        pairSeeds(seeds),
+        playoffLegs,
+        lastRoundNumber + 1,
+      );
+    }
+
+    // Próxima fase: vencedores da fase mais recente.
+    const lastPhase = knockoutRounds[knockoutRounds.length - 1].phase;
+    const phaseRounds = knockoutRounds.filter((r) => r.phase === lastPhase);
+    const phaseMatches = phaseRounds.flatMap((r) => r.matches);
+
+    if (lastPhase === "FINAL") {
+      const finalPair = [phaseMatches[0].homeTeamId, phaseMatches[0].awayTeamId] as [string, string];
+      const result = resolveTieWinner(finalPair, phaseMatches);
+      if (!result.winner) return { error: "A final ainda não foi decidida." };
+      const champion = await db.leagueTeam.findUnique({
+        where: { id: result.winner },
+        include: { church: true },
+      });
+      return { success: `🏆 Campeonato decidido: ${champion?.church.name ?? "campeão definido"}!` };
+    }
+
+    // Confrontos na ordem de criação da rodada de ida.
+    const idaMatches = phaseRounds[0].matches;
+    const winners: string[] = [];
+    for (const m of idaMatches) {
+      const pair = [m.homeTeamId, m.awayTeamId] as [string, string];
+      const result = resolveTieWinner(pair, phaseMatches);
+      if (!result.winner) {
+        return {
+          error:
+            result.reason === "EMPATE_SEM_PENALTIS"
+              ? "Há confronto empatado sem pênaltis registrados. Registre a disputa de pênaltis na última partida do confronto."
+              : "Finalize todas as partidas da fase atual antes de gerar a próxima.",
+        };
+      }
+      winners.push(result.winner);
+    }
+
+    // Vencedores pareiam em sequência (a ordem da ida já veio do bracket).
+    const nextPairs: [string, string][] = [];
+    for (let i = 0; i < winners.length; i += 2) {
+      nextPairs.push([winners[i], winners[i + 1]]);
+    }
+    return createKnockoutPhase(leagueId, league.slug, nextPairs, playoffLegs, lastRoundNumber + 1);
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Erro ao gerar fase final." };
   }
 }
 
