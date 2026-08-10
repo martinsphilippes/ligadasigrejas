@@ -199,7 +199,12 @@ export default async function ChurchPage({
             </CardHeader>
             <CardContent>
               <dl className="space-y-2.5 text-sm">
-                {church.address && <InfoRow label="Endereço" value={church.address} />}
+                {church.address && (
+                  <InfoRow
+                    label="Endereço"
+                    value={[church.address, church.addressNumber].filter(Boolean).join(", ")}
+                  />
+                )}
                 {church.zipCode && <InfoRow label="CEP" value={church.zipCode} />}
                 {church.phone && <InfoRow label="Telefone" value={church.phone} />}
                 {church.email && <InfoRow label="E-mail" value={church.email} />}

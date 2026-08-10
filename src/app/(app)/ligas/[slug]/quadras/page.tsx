@@ -68,7 +68,10 @@ export default async function VenuesPage({
                   <div>
                     <h3 className="font-semibold text-zinc-900">{venue.name}</h3>
                     <p className="mt-0.5 text-xs text-zinc-500">
-                      {[venue.address, venue.city && `${venue.city}${venue.state ? `/${venue.state}` : ""}`]
+                      {[
+                        [venue.address, venue.addressNumber].filter(Boolean).join(", "),
+                        venue.city && `${venue.city}${venue.state ? `/${venue.state}` : ""}`,
+                      ]
                         .filter(Boolean)
                         .join(" · ") || "Endereço não informado"}
                     </p>

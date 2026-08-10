@@ -11,6 +11,7 @@ import { SubmitButton } from "@/components/ui/submit-button";
 interface VenueData {
   name?: string;
   address?: string | null;
+  addressNumber?: string | null;
   district?: string | null;
   zipCode?: string | null;
   city?: string | null;
@@ -46,6 +47,7 @@ export function VenueForm({
         initial={{
           zipCode: initial?.zipCode,
           address: initial?.address,
+          addressNumber: initial?.addressNumber,
           district: initial?.district,
           city: initial?.city,
           state: initial?.state,

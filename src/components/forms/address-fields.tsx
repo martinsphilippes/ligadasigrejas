@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { Field, Input, Select } from "@/components/ui/field";
 import { UFS, formatCep } from "@/lib/brazil";
 import { CityAutocomplete } from "./city-autocomplete";
@@ -8,6 +8,7 @@ import { CityAutocomplete } from "./city-autocomplete";
 interface AddressInitial {
   zipCode?: string | null;
   address?: string | null;
+  addressNumber?: string | null;
   district?: string | null;
   city?: string | null;
   state?: string | null;
@@ -35,6 +36,7 @@ export function AddressFields({
   const [city, setCity] = useState(initial?.city ?? "");
   const [uf, setUf] = useState(initial?.state ?? "");
   const [cepStatus, setCepStatus] = useState<"idle" | "loading" | "error" | "ok">("idle");
+  const numberRef = useRef<HTMLInputElement>(null);
 
   async function onZipChange(raw: string) {
     const masked = formatCep(raw);
@@ -57,6 +59,8 @@ export function AddressFields({
       if (data.localidade) setCity(data.localidade);
       if (data.uf) setUf(data.uf);
       setCepStatus("ok");
+      // Endereço veio pronto: só falta o número — foca direto nele
+      numberRef.current?.focus();
     } catch {
       setCepStatus("error");
     }
@@ -87,15 +91,26 @@ export function AddressFields({
           />
         </Field>
         {showStreet && (
-          <Field label="Endereço">
-            <Input
-              name="address"
-              value={address}
-              onChange={(e) => setAddress(e.target.value)}
-              placeholder="Rua, número"
-              autoComplete="street-address"
-            />
-          </Field>
+          <div className="grid grid-cols-[1fr_96px] gap-4">
+            <Field label="Endereço">
+              <Input
+                name="address"
+                value={address}
+                onChange={(e) => setAddress(e.target.value)}
+                placeholder="Rua / avenida"
+                autoComplete="street-address"
+              />
+            </Field>
+            <Field label="Número">
+              <Input
+                ref={numberRef}
+                name="addressNumber"
+                defaultValue={initial?.addressNumber ?? ""}
+                placeholder="123"
+                autoComplete="off"
+              />
+            </Field>
+          </div>
         )}
       </div>
       <div className="grid gap-4 sm:grid-cols-[1fr_1fr_170px]">

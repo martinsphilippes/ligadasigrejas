@@ -14,6 +14,7 @@ interface ChurchData {
   state?: string;
   district?: string | null;
   zipCode?: string | null;
+  addressNumber?: string | null;
   address?: string | null;
   phone?: string | null;
   email?: string | null;
@@ -50,6 +51,7 @@ export function ChurchForm({
         initial={{
           zipCode: initial?.zipCode,
           address: initial?.address,
+          addressNumber: initial?.addressNumber,
           district: initial?.district,
           city: initial?.city,
           state: initial?.state,
