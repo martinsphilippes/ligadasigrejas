@@ -5,6 +5,7 @@ import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { randomBytes } from "crypto";
 import { db } from "@/lib/db";
+import { isOwnerEmail } from "@/lib/config";
 import { createSession, destroySession } from "./session";
 
 export interface AuthState {
@@ -37,15 +38,15 @@ export async function registerAction(
   const existing = await db.user.findUnique({ where: { email } });
   if (existing) return { error: "Já existe uma conta com este e-mail." };
 
-  // A primeira conta criada é o administrador da plataforma; as demais
-  // entram como membros e podem ser promovidas pelo admin.
+  // Donos do app e a primeira conta criada entram como administradores;
+  // as demais entram como membros e podem ser promovidas pelo admin.
   const isFirstUser = (await db.user.count()) === 0;
   const user = await db.user.create({
     data: {
       name,
       email,
       passwordHash: await bcrypt.hash(password, 10),
-      role: isFirstUser ? "ADMIN" : "MEMBRO",
+      role: isFirstUser || isOwnerEmail(email) ? "ADMIN" : "MEMBRO",
     },
   });
 

@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { PageHeader } from "@/components/ui/page-header";
 import { setUserRoleAction } from "@/lib/actions/admin";
+import { isOwnerEmail } from "@/lib/config";
 
 export const metadata: Metadata = { title: "Usuários" };
 
@@ -52,7 +53,9 @@ export default async function AdminUsersPage() {
                       {user._count.ownedLeagues > 0 && ` · ${user._count.ownedLeagues} liga(s)`}
                     </p>
                   </div>
-                  {user.id === me.sub ? (
+                  {isOwnerEmail(user.email) ? (
+                    <Badge tone="gold">👑 Dono do app</Badge>
+                  ) : user.id === me.sub ? (
                     <Badge tone="gold">{PLATFORM_ROLE[user.role as PlatformRole] ?? user.role}</Badge>
                   ) : (
                     <form

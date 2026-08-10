@@ -2,12 +2,18 @@ import "server-only";
 import { cache } from "react";
 import { db } from "@/lib/db";
 import type { MemberRole, PlatformRole } from "@/lib/domain/enums";
+import { isOwnerEmail } from "@/lib/config";
 
 // ─── Papéis de plataforma ────────────────────────────────────────────────────
 
 /** Papel de plataforma do usuário (ADMIN | ORGANIZADOR | MEMBRO). */
 export const getPlatformRole = cache(async (userId: string): Promise<PlatformRole> => {
-  const user = await db.user.findUnique({ where: { id: userId }, select: { role: true } });
+  const user = await db.user.findUnique({
+    where: { id: userId },
+    select: { role: true, email: true },
+  });
+  // Donos do app são sempre administradores, aconteça o que acontecer no banco.
+  if (isOwnerEmail(user?.email)) return "ADMIN";
   return (user?.role as PlatformRole) ?? "MEMBRO";
 });
 
