@@ -1,0 +1,314 @@
+// Liga das Igrejas — schema do banco de dados
+//
+// SQLite em desenvolvimento; para produção basta trocar o provider/url para
+// PostgreSQL (o schema evita recursos específicos de SQLite).
+// Enums são representados como String + validação Zod na camada de domínio
+// (SQLite não suporta enums nativos); os valores válidos estão em
+// src/lib/domain/enums.ts.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// ─── Usuários e sessão ────────────────────────────────────────────────────────
+
+model User {
+  id           String   @id @default(cuid())
+  name         String
+  email        String   @unique
+  passwordHash String
+  avatarUrl    String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  ownedLeagues League[]       @relation("LeagueOwner")
+  memberships  LeagueMember[]
+  resetTokens  PasswordResetToken[]
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  token     String   @unique
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime
+  usedAt    DateTime?
+  createdAt DateTime @default(now())
+}
+
+// ─── Esportes (extensível: futsal hoje, outros amanhã) ───────────────────────
+
+model Sport {
+  id             String @id @default(cuid())
+  slug           String @unique // "futsal"
+  name           String // "Futsal"
+  playersOnField Int // 5 no futsal (4 linha + 1 goleiro)
+  description    String?
+
+  leagues League[]
+}
+
+// ─── Igrejas e atletas ───────────────────────────────────────────────────────
+
+model Church {
+  id           String  @id @default(cuid())
+  name         String
+  denomination String
+  city         String
+  state        String
+  district     String? // bairro
+  address      String?
+  phone        String?
+  email        String?
+  pastorName   String?
+  photoUrl     String?
+  crestUrl     String? // escudo
+  description  String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  athletes    Athlete[]
+  staff       StaffMember[]
+  leagueTeams LeagueTeam[]
+  members     LeagueMember[]
+}
+
+model Athlete {
+  id          String    @id @default(cuid())
+  churchId    String
+  church      Church    @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  name        String
+  photoUrl    String?
+  shirtNumber Int?
+  position    String? // GOLEIRO | FIXO | ALA | PIVO (por esporte, validado no domínio)
+  phone       String?
+  email       String?
+  birthDate   DateTime?
+  notes       String?
+  squadRole   String    @default("RESERVA") // TITULAR | RESERVA
+  active      Boolean   @default(true)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  matchEvents MatchEvent[]
+
+  @@index([churchId])
+}
+
+// Comissão técnica da igreja
+model StaffMember {
+  id       String  @id @default(cuid())
+  churchId String
+  church   Church  @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  name     String
+  role     String // Técnico, Auxiliar, Preparador Físico...
+  phone    String?
+  photoUrl String?
+
+  @@index([churchId])
+}
+
+// ─── Ligas / campeonatos ─────────────────────────────────────────────────────
+
+model League {
+  id          String    @id @default(cuid())
+  slug        String    @unique
+  name        String
+  description String?
+  season      String // temporada, ex.: "2026"
+  city        String?
+  state       String?
+  logoUrl     String?
+  bannerUrl   String?
+  startDate   DateTime?
+  endDate     DateTime?
+  status      String    @default("INSCRICOES") // INSCRICOES | EM_ANDAMENTO | PAUSADA | ENCERRADA
+
+  sportId String
+  sport   Sport  @relation(fields: [sportId], references: [id])
+  ownerId String
+  owner   User   @relation("LeagueOwner", fields: [ownerId], references: [id])
+
+  // Conteúdo institucional (tela Sobre)
+  history    String?
+  organizers String?
+  contact    String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  rules         LeagueRules?
+  teams         LeagueTeam[]
+  rounds        Round[]
+  matches       Match[]
+  venues        Venue[]
+  members       LeagueMember[]
+  announcements Announcement[]
+}
+
+// Regras configuráveis da liga — formato do campeonato sem alterar código
+model LeagueRules {
+  id       String @id @default(cuid())
+  leagueId String @unique
+  league   League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+
+  format          String @default("PONTOS_CORRIDOS") // PONTOS_CORRIDOS | GRUPOS | MATA_MATA | GRUPOS_MATA_MATA
+  pointsWin       Int    @default(3)
+  pointsDraw      Int    @default(1)
+  pointsLoss      Int    @default(0)
+  legs            Int    @default(1) // quantidade de turnos (1 = turno único, 2 = ida e volta)
+  playoffLegs     Int    @default(1) // mata-mata em jogo único ou ida e volta
+  hasRepechage    Boolean @default(false)
+  tiebreakers     String  @default("[\"PONTOS\",\"VITORIAS\",\"SALDO\",\"GOLS_PRO\",\"CONFRONTO_DIRETO\",\"SORTEIO\"]") // JSON ordenado
+  matchDuration   Int    @default(40) // minutos (2 tempos)
+  periods         Int    @default(2)
+  intervalMinutes Int    @default(10)
+  extraTime       Int    @default(10) // prorrogação (minutos), 0 = direto pênaltis
+  penaltiesCount  Int    @default(5) // cobranças alternadas iniciais
+  maxAthletes     Int    @default(15)
+  minAthletes     Int    @default(7)
+  yellowLimit     Int    @default(3) // amarelos acumulados => suspensão
+  redSuspension   Int    @default(1) // jogos de suspensão por vermelho
+  notes           String?
+}
+
+// Participação de uma igreja em uma liga (a "equipe" no contexto da liga)
+model LeagueTeam {
+  id       String @id @default(cuid())
+  leagueId String
+  league   League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  churchId String
+  church   Church @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  group    String? // fase de grupos: "A", "B"...
+
+  createdAt DateTime @default(now())
+
+  homeMatches Match[] @relation("HomeTeam")
+  awayMatches Match[] @relation("AwayTeam")
+  wonByWo     Match[] @relation("WoWinner")
+
+  @@unique([leagueId, churchId])
+  @@index([leagueId])
+}
+
+model Round {
+  id       String  @id @default(cuid())
+  leagueId String
+  league   League  @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  number   Int
+  name     String? // "Rodada 1", "Quartas de final"...
+  phase    String  @default("PONTOS_CORRIDOS") // PONTOS_CORRIDOS | GRUPOS | OITAVAS | QUARTAS | SEMIFINAL | FINAL | REPESCAGEM
+
+  matches Match[]
+
+  @@unique([leagueId, number])
+  @@index([leagueId])
+}
+
+model Venue {
+  id          String  @id @default(cuid())
+  leagueId    String
+  league      League  @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  name        String
+  address     String?
+  city        String?
+  state       String?
+  mapUrl      String? // localização (link de mapa)
+  photoUrl    String?
+  description String?
+
+  matches Match[]
+
+  @@index([leagueId])
+}
+
+model Match {
+  id       String  @id @default(cuid())
+  leagueId String
+  league   League  @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  roundId  String?
+  round    Round?  @relation(fields: [roundId], references: [id], onDelete: SetNull)
+
+  homeTeamId String
+  homeTeam   LeagueTeam @relation("HomeTeam", fields: [homeTeamId], references: [id], onDelete: Cascade)
+  awayTeamId String
+  awayTeam   LeagueTeam @relation("AwayTeam", fields: [awayTeamId], references: [id], onDelete: Cascade)
+
+  venueId String?
+  venue   Venue?  @relation(fields: [venueId], references: [id], onDelete: SetNull)
+
+  scheduledAt DateTime?
+  status      String    @default("AGENDADO") // AGENDADO | EM_ANDAMENTO | FINALIZADO | WO | ADIADO | CANCELADO
+  homeScore   Int?
+  awayScore   Int?
+  // Placar de pênaltis (mata-mata)
+  homePenalties Int?
+  awayPenalties Int?
+  woWinnerId  String?
+  woWinner    LeagueTeam? @relation("WoWinner", fields: [woWinnerId], references: [id], onDelete: SetNull)
+  notes       String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  events MatchEvent[]
+
+  @@index([leagueId, status])
+  @@index([leagueId, scheduledAt])
+}
+
+// Eventos da partida: gols, cartões (base para estatísticas individuais futuras)
+model MatchEvent {
+  id        String  @id @default(cuid())
+  matchId   String
+  match     Match   @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  teamId    String // LeagueTeam.id (lado do evento)
+  athleteId String?
+  athlete   Athlete? @relation(fields: [athleteId], references: [id], onDelete: SetNull)
+  type      String // GOL | GOL_CONTRA | CARTAO_AMARELO | CARTAO_VERMELHO
+  minute    Int?
+  notes     String?
+
+  createdAt DateTime @default(now())
+
+  @@index([matchId])
+  @@index([athleteId])
+}
+
+// ─── Organização e papéis ────────────────────────────────────────────────────
+
+model LeagueMember {
+  id       String  @id @default(cuid())
+  leagueId String
+  league   League  @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  role     String // ORGANIZADOR_GERAL | ORGANIZADOR_IGREJA | ADMIN_EQUIPE | MESARIO | ARBITRO
+  churchId String? // escopo para papéis ligados a uma igreja
+  church   Church? @relation(fields: [churchId], references: [id], onDelete: SetNull)
+
+  createdAt DateTime @default(now())
+
+  @@unique([leagueId, userId, role])
+  @@index([leagueId])
+}
+
+model Announcement {
+  id       String @id @default(cuid())
+  leagueId String
+  league   League @relation(fields: [leagueId], references: [id], onDelete: Cascade)
+  title    String
+  content  String
+  pinned   Boolean @default(false)
+
+  createdAt DateTime @default(now())
+
+  @@index([leagueId])
+}

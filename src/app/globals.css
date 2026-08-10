@@ -1,0 +1,60 @@
+@import "tailwindcss";
+
+@theme {
+  /* Paleta da Liga das Igrejas — verde profundo + dourado */
+  --color-brand-50: #f0faf4;
+  --color-brand-100: #dbf3e4;
+  --color-brand-200: #bae6cd;
+  --color-brand-300: #8bd3ac;
+  --color-brand-400: #55b884;
+  --color-brand-500: #2f9d66;
+  --color-brand-600: #1f7f51;
+  --color-brand-700: #1a6543;
+  --color-brand-800: #175137;
+  --color-brand-900: #14432f;
+  --color-brand-950: #0a251a;
+
+  --color-gold-400: #f5c451;
+  --color-gold-500: #eab030;
+  --color-gold-600: #d1951a;
+
+  --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
+
+  --animate-fade-up: fade-up 0.35s ease-out both;
+  --animate-fade-in: fade-in 0.3s ease-out both;
+
+  @keyframes fade-up {
+    from {
+      opacity: 0;
+      transform: translateY(8px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+    }
+    to {
+      opacity: 1;
+    }
+  }
+}
+
+body {
+  background: #f6f7f5;
+  color: #18181b;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: var(--color-brand-200);
+}
+
+/* Scrollbar discreta */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: #d4d4d8 transparent;
+}
