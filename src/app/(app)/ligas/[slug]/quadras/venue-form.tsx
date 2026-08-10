@@ -7,45 +7,64 @@ import { Field, Input, Textarea } from "@/components/ui/field";
 import { FormError, FormSuccess } from "@/components/ui/form-message";
 import { SubmitButton } from "@/components/ui/submit-button";
 
-export function VenueForm({ leagueId }: { leagueId: string }) {
-  const [state, action] = useActionState<ActionState, FormData>(
-    createVenueAction.bind(null, leagueId),
-    {},
-  );
+interface VenueData {
+  name?: string;
+  address?: string | null;
+  city?: string | null;
+  state?: string | null;
+  mapUrl?: string | null;
+  photoUrl?: string | null;
+  description?: string | null;
+}
+
+export function VenueForm({
+  leagueId,
+  action,
+  initial,
+  submitLabel = "Cadastrar quadra",
+}: {
+  leagueId?: string;
+  action?: (prev: ActionState, formData: FormData) => Promise<ActionState>;
+  initial?: VenueData;
+  submitLabel?: string;
+}) {
+  const boundAction =
+    action ?? createVenueAction.bind(null, leagueId as string);
+  const [state, formAction] = useActionState<ActionState, FormData>(boundAction, {});
 
   return (
-    <form action={action} className="space-y-4">
+    <form action={formAction} className="space-y-4">
       <FormError message={state.error} />
       <FormSuccess message={state.success} />
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Nome da quadra">
-          <Input name="name" placeholder="Ginásio Municipal" required />
+          <Input name="name" defaultValue={initial?.name} placeholder="Ginásio Municipal" required />
         </Field>
         <Field label="Endereço">
-          <Input name="address" placeholder="Rua, número" />
+          <Input name="address" defaultValue={initial?.address ?? ""} placeholder="Rua, número" />
         </Field>
       </div>
       <div className="grid gap-4 sm:grid-cols-[1fr_90px_1fr]">
         <Field label="Cidade">
-          <Input name="city" placeholder="São Paulo" />
+          <Input name="city" defaultValue={initial?.city ?? ""} placeholder="São Paulo" />
         </Field>
         <Field label="UF">
-          <Input name="state" placeholder="SP" maxLength={2} />
+          <Input name="state" defaultValue={initial?.state ?? ""} placeholder="SP" maxLength={2} />
         </Field>
         <Field label="Localização (link do mapa)">
-          <Input name="mapUrl" type="url" placeholder="https://maps.google.com/..." />
+          <Input name="mapUrl" type="url" defaultValue={initial?.mapUrl ?? ""} placeholder="https://maps.google.com/..." />
         </Field>
       </div>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Foto (URL)">
-          <Input name="photoUrl" type="url" placeholder="https://..." />
+          <Input name="photoUrl" type="url" defaultValue={initial?.photoUrl ?? ""} placeholder="https://..." />
         </Field>
         <Field label="Descrição">
-          <Textarea name="description" placeholder="Piso, vestiários, capacidade..." className="min-h-11" />
+          <Textarea name="description" defaultValue={initial?.description ?? ""} placeholder="Piso, vestiários, capacidade..." className="min-h-11" />
         </Field>
       </div>
       <div className="flex justify-end">
-        <SubmitButton pendingText="Cadastrando...">Cadastrar quadra</SubmitButton>
+        <SubmitButton>{submitLabel}</SubmitButton>
       </div>
     </form>
   );

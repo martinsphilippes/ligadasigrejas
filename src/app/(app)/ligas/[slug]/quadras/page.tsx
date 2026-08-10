@@ -1,5 +1,6 @@
 /* eslint-disable @next/next/no-img-element */
 import type { Metadata } from "next";
+import Link from "next/link";
 import { db } from "@/lib/db";
 import { getLeagueContext } from "@/lib/data/league";
 import { can } from "@/lib/permissions";
@@ -40,7 +41,7 @@ export default async function VenuesPage({
             <CardTitle>Nova quadra</CardTitle>
           </CardHeader>
           <CardContent>
-            <VenueForm leagueId={league.id} />
+            <VenueForm leagueId={league.id} submitLabel="Cadastrar quadra" />
           </CardContent>
         </Card>
       )}
@@ -93,16 +94,24 @@ export default async function VenuesPage({
                     <span />
                   )}
                   {manage && (
-                    <form action={deleteVenueAction.bind(null, league.id, venue.id)}>
-                      <ConfirmButton
-                        variant="ghost"
-                        size="sm"
-                        className="h-auto px-2 py-1 text-[11px] text-red-500 hover:bg-red-50"
-                        message={`Excluir a quadra ${venue.name}?`}
+                    <span className="flex items-center gap-1">
+                      <Link
+                        href={`/ligas/${league.slug}/quadras/${venue.id}/editar`}
+                        className="rounded-md px-2 py-1 text-[11px] font-medium text-zinc-500 hover:bg-zinc-100 hover:text-zinc-800"
                       >
-                        Excluir
-                      </ConfirmButton>
-                    </form>
+                        Editar
+                      </Link>
+                      <form action={deleteVenueAction.bind(null, league.id, venue.id)}>
+                        <ConfirmButton
+                          variant="ghost"
+                          size="sm"
+                          className="h-auto px-2 py-1 text-[11px] text-red-500 hover:bg-red-50"
+                          message={`Excluir a quadra ${venue.name}?`}
+                        >
+                          Excluir
+                        </ConfirmButton>
+                      </form>
+                    </span>
                   )}
                 </div>
               </CardContent>

@@ -1,9 +1,11 @@
 import type { Metadata } from "next";
 import { getLeagueContext } from "@/lib/data/league";
-import { can } from "@/lib/permissions";
+import { can, getPlatformRole } from "@/lib/permissions";
 import { formatDate } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { ConfirmButton } from "@/components/ui/confirm-button";
 import { PageHeader } from "@/components/ui/page-header";
+import { deleteLeagueAction } from "@/lib/actions/league";
 import { AboutForm, LeagueSettingsForm } from "./about-form";
 
 export const metadata: Metadata = { title: "Sobre" };
@@ -14,8 +16,10 @@ export default async function AboutPage({
   params: Promise<{ slug: string }>;
 }) {
   const { slug } = await params;
-  const { league, access } = await getLeagueContext(slug);
+  const { league, user, access } = await getLeagueContext(slug);
   const manage = can(access, "league.manage");
+  const canDelete =
+    access.isOwner || (await getPlatformRole(user.sub)) === "ADMIN";
 
   return (
     <div>
@@ -86,6 +90,29 @@ export default async function AboutPage({
               </CardContent>
             </Card>
           </>
+        )}
+
+        {canDelete && (
+          <Card className="border-red-200">
+            <CardHeader>
+              <CardTitle className="text-red-700">Zona de perigo</CardTitle>
+            </CardHeader>
+            <CardContent className="flex flex-wrap items-center justify-between gap-3">
+              <p className="text-sm text-zinc-500">
+                Excluir a liga apaga equipes inscritas, rodadas, jogos, resultados,
+                quadras e avisos. As igrejas e seus atletas permanecem cadastrados.
+              </p>
+              <form action={deleteLeagueAction.bind(null, league.id)}>
+                <ConfirmButton
+                  variant="danger"
+                  size="sm"
+                  message={`Excluir a liga ${league.name} definitivamente? Esta ação não pode ser desfeita.`}
+                >
+                  Excluir liga
+                </ConfirmButton>
+              </form>
+            </CardContent>
+          </Card>
         )}
       </div>
     </div>

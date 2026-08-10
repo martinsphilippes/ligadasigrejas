@@ -150,6 +150,14 @@ export default async function ChurchPage({
                         <p className="text-xs text-zinc-500">{s.role}</p>
                       </div>
                       {manage && (
+                        <Link
+                          href={`/igrejas/${church.id}/comissao/${s.id}/editar`}
+                          className="rounded-md px-2 py-1 text-[11px] font-medium text-zinc-500 transition-colors hover:bg-zinc-100 hover:text-zinc-800"
+                        >
+                          Editar
+                        </Link>
+                      )}
+                      {manage && (
                         <form action={deleteStaffAction.bind(null, s.id)}>
                           <ConfirmButton
                             variant="ghost"

@@ -235,6 +235,35 @@ export async function createStaffAction(
   return { success: "Membro adicionado à comissão." };
 }
 
+export async function updateStaffAction(
+  staffId: string,
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const existing = await db.staffMember.findUnique({ where: { id: staffId } });
+  if (!existing) return { error: "Membro da comissão não encontrado." };
+  try {
+    await requireChurchManager(existing.churchId);
+  } catch (e) {
+    return { error: e instanceof Error ? e.message : "Sem permissão." };
+  }
+  const parsed = staffSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+  const d = parsed.data;
+
+  await db.staffMember.update({
+    where: { id: staffId },
+    data: {
+      name: d.name,
+      role: d.role,
+      phone: d.phone ?? null,
+      photoUrl: d.photoUrl ?? null,
+    },
+  });
+  revalidatePath(`/igrejas/${existing.churchId}`, "layout");
+  redirect(`/igrejas/${existing.churchId}`);
+}
+
 export async function deleteStaffAction(staffId: string) {
   const existing = await db.staffMember.findUniqueOrThrow({ where: { id: staffId } });
   await requireChurchManager(existing.churchId);

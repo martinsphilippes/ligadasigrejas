@@ -44,8 +44,14 @@ export function Topbar({
           </nav>
         </div>
         <div className="flex items-center gap-3">
-          <span className="hidden text-sm text-zinc-500 md:inline">{user.name}</span>
-          <Avatar name={user.name} size="sm" />
+          <Link
+            href="/perfil"
+            className="flex items-center gap-2 rounded-lg px-2 py-1 transition-colors hover:bg-zinc-100"
+            title="Meu perfil"
+          >
+            <span className="hidden text-sm text-zinc-500 md:inline">{user.name}</span>
+            <Avatar name={user.name} size="sm" />
+          </Link>
           <form action={logoutAction}>
             <button
               type="submit"

@@ -6,7 +6,7 @@ import { z } from "zod";
 import { randomBytes } from "crypto";
 import { db } from "@/lib/db";
 import { isOwnerEmail } from "@/lib/config";
-import { createSession, destroySession } from "./session";
+import { createSession, destroySession, getSession } from "./session";
 
 export interface AuthState {
   error?: string;
@@ -81,6 +81,61 @@ export async function loginAction(
 export async function logoutAction() {
   await destroySession();
   redirect("/login");
+}
+
+const profileSchema = z.object({
+  name: z.string().trim().min(2, "Informe seu nome completo"),
+  avatarUrl: z.preprocess(
+    (v) => (v === "" || v == null ? undefined : v),
+    z.string().trim().url("URL da foto inválida").optional(),
+  ),
+});
+
+/** Atualiza nome e foto do próprio usuário (e renova a sessão). */
+export async function updateProfileAction(
+  _prev: AuthState,
+  formData: FormData,
+): Promise<AuthState> {
+  const session = await getSession();
+  if (!session) return { error: "Sessão expirada. Entre novamente." };
+
+  const parsed = profileSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+
+  const user = await db.user.update({
+    where: { id: session.sub },
+    data: { name: parsed.data.name, avatarUrl: parsed.data.avatarUrl ?? null },
+  });
+
+  await createSession({ sub: user.id, name: user.name, email: user.email });
+  return { success: "Perfil atualizado." };
+}
+
+const passwordChangeSchema = z.object({
+  currentPassword: z.string().min(1, "Informe a senha atual"),
+  newPassword: z.string().min(6, "A nova senha deve ter pelo menos 6 caracteres"),
+});
+
+export async function changePasswordAction(
+  _prev: AuthState,
+  formData: FormData,
+): Promise<AuthState> {
+  const session = await getSession();
+  if (!session) return { error: "Sessão expirada. Entre novamente." };
+
+  const parsed = passwordChangeSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+
+  const user = await db.user.findUniqueOrThrow({ where: { id: session.sub } });
+  if (!(await bcrypt.compare(parsed.data.currentPassword, user.passwordHash))) {
+    return { error: "Senha atual incorreta." };
+  }
+
+  await db.user.update({
+    where: { id: user.id },
+    data: { passwordHash: await bcrypt.hash(parsed.data.newPassword, 10) },
+  });
+  return { success: "Senha alterada com sucesso." };
 }
 
 export async function forgotPasswordAction(

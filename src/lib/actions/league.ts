@@ -185,6 +185,40 @@ export async function createAnnouncementAction(
   return { success: "Aviso publicado." };
 }
 
+export async function updateAnnouncementAction(
+  leagueId: string,
+  id: string,
+  _prev: ActionState,
+  formData: FormData,
+): Promise<ActionState> {
+  const user = await requireUser();
+  const access = await getLeagueAccess(leagueId, user.sub);
+  if (!can(access, "league.manage")) return { error: "Sem permissão." };
+
+  const parsed = announcementSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return { error: parsed.error.issues[0].message };
+
+  const league = await db.league.findUniqueOrThrow({ where: { id: leagueId } });
+  await db.announcement.updateMany({ where: { id, leagueId }, data: parsed.data });
+
+  revalidatePath(`/ligas/${league.slug}`);
+  return { success: "Aviso atualizado." };
+}
+
+/** Exclui a liga inteira (somente dono da liga ou administrador da plataforma). */
+export async function deleteLeagueAction(leagueId: string) {
+  const user = await requireUser();
+  const [league, role] = await Promise.all([
+    db.league.findUniqueOrThrow({ where: { id: leagueId } }),
+    getPlatformRole(user.sub),
+  ]);
+  if (league.ownerId !== user.sub && role !== "ADMIN") return;
+
+  await db.league.delete({ where: { id: leagueId } });
+  revalidatePath("/");
+  redirect("/");
+}
+
 export async function deleteAnnouncementAction(leagueId: string, id: string) {
   const user = await requireUser();
   const access = await getLeagueAccess(leagueId, user.sub);

@@ -5,12 +5,11 @@ import { getStandings } from "@/lib/data/standings";
 import { can } from "@/lib/permissions";
 import { formatDate } from "@/lib/utils";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ConfirmButton } from "@/components/ui/confirm-button";
 import { StatCard } from "@/components/ui/stat-card";
 import { MatchCard } from "@/components/match-card";
 import { StandingsTable } from "@/components/standings-table";
-import { deleteAnnouncementAction } from "@/lib/actions/league";
 import { AnnouncementForm } from "./announcement-form";
+import { AnnouncementItem } from "./announcement-item";
 
 export default async function LeagueDashboardPage({
   params,
@@ -101,33 +100,12 @@ export default async function LeagueDashboardPage({
               <p className="text-sm text-zinc-400">Nenhum aviso publicado.</p>
             )}
             {announcements.map((a) => (
-              <div
+              <AnnouncementItem
                 key={a.id}
-                className="rounded-lg border border-zinc-100 bg-zinc-50/60 px-4 py-3"
-              >
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <p className="text-sm font-semibold text-zinc-900">
-                      {a.pinned && "📌 "}
-                      {a.title}
-                    </p>
-                    <p className="mt-0.5 whitespace-pre-line text-sm text-zinc-600">{a.content}</p>
-                    <p className="mt-1 text-[11px] text-zinc-400">{formatDate(a.createdAt)}</p>
-                  </div>
-                  {manage && (
-                    <form action={deleteAnnouncementAction.bind(null, league.id, a.id)}>
-                      <ConfirmButton
-                        variant="ghost"
-                        size="sm"
-                        className="h-auto px-2 py-1 text-[11px] text-red-500 hover:bg-red-50"
-                        message="Excluir este aviso?"
-                      >
-                        Excluir
-                      </ConfirmButton>
-                    </form>
-                  )}
-                </div>
-              </div>
+                leagueId={league.id}
+                announcement={a}
+                canManage={manage}
+              />
             ))}
             {manage && <AnnouncementForm leagueId={league.id} />}
           </CardContent>
