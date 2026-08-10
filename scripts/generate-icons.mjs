@@ -4,6 +4,59 @@
 import sharp from "sharp";
 import { mkdirSync } from "node:fs";
 
+/** Pontos de um pentágono regular. */
+function pentagon(cx, cy, r, rotationDeg = -90) {
+  const pts = [];
+  for (let i = 0; i < 5; i++) {
+    const a = ((rotationDeg + i * 72) * Math.PI) / 180;
+    pts.push(`${(cx + r * Math.cos(a)).toFixed(1)},${(cy + r * Math.sin(a)).toFixed(1)}`);
+  }
+  return pts.join(" ");
+}
+
+/**
+ * Bola de futebol clássica: gomo pentagonal central, gomos parciais na borda
+ * conectados por costuras, com sombreamento para dar volume.
+ */
+function ballSvg() {
+  const R = 92; // raio da bola
+  const dark = "#16181d";
+  const centerR = 30;
+  const edgeDist = 103; // centro dos gomos da borda (só uma fatia visível)
+  const edgeR = 30;
+
+  let edges = "";
+  let seams = "";
+  for (let i = 0; i < 5; i++) {
+    const a = ((-90 + i * 72) * Math.PI) / 180;
+    const ex = edgeDist * Math.cos(a);
+    const ey = edgeDist * Math.sin(a);
+    // gomo da borda com um vértice apontando para o centro da bola
+    edges += `<polygon points="${pentagon(ex, ey, edgeR, (-90 + i * 72) + 180)}" fill="${dark}"/>`;
+    // costura: do vértice do gomo central até o vértice interno do gomo da borda
+    const x1 = centerR * Math.cos(a);
+    const y1 = centerR * Math.sin(a);
+    const x2 = (edgeDist - edgeR) * Math.cos(a);
+    const y2 = (edgeDist - edgeR) * Math.sin(a);
+    seams += `<line x1="${x1.toFixed(1)}" y1="${y1.toFixed(1)}" x2="${x2.toFixed(1)}" y2="${y2.toFixed(1)}"/>`;
+  }
+
+  return `
+    <g transform="translate(256,362)">
+      <circle r="${R}" fill="url(#ballGrad)"/>
+      <g clip-path="url(#ballClip)">
+        <polygon points="${pentagon(0, 0, centerR)}" fill="${dark}" stroke="${dark}" stroke-width="8" stroke-linejoin="round"/>
+        <g stroke="${dark}" stroke-width="4" stroke-linejoin="round">${edges}</g>
+        <g stroke="${dark}" stroke-width="5" stroke-linecap="round">${seams}</g>
+        <!-- sombra inferior para volume -->
+        <circle r="${R}" fill="url(#ballShade)"/>
+        <!-- brilho superior -->
+        <ellipse cx="-32" cy="-46" rx="34" ry="24" fill="url(#ballShine)" transform="rotate(-32 -32 -46)"/>
+      </g>
+      <circle r="${R}" fill="none" stroke="${dark}" stroke-width="6"/>
+    </g>`;
+}
+
 /**
  * @param {number} contentScale escala do conteúdo (1 = normal; <1 para maskable)
  * @param {boolean} rounded cantos arredondados (false para maskable, que é full-bleed)
@@ -21,6 +74,20 @@ function iconSvg(contentScale = 1, rounded = true) {
       <stop offset="0%" stop-color="#f5c451"/>
       <stop offset="100%" stop-color="#d1951a"/>
     </linearGradient>
+    <radialGradient id="ballGrad" cx="36%" cy="28%" r="85%">
+      <stop offset="0%" stop-color="#ffffff"/>
+      <stop offset="62%" stop-color="#f4f4f1"/>
+      <stop offset="100%" stop-color="#cfcfc9"/>
+    </radialGradient>
+    <radialGradient id="ballShade" cx="36%" cy="28%" r="98%">
+      <stop offset="80%" stop-color="#000000" stop-opacity="0"/>
+      <stop offset="100%" stop-color="#000000" stop-opacity="0.18"/>
+    </radialGradient>
+    <radialGradient id="ballShine" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#ffffff" stop-opacity="0.85"/>
+      <stop offset="100%" stop-color="#ffffff" stop-opacity="0"/>
+    </radialGradient>
+    <clipPath id="ballClip"><circle cx="0" cy="0" r="92"/></clipPath>
   </defs>
   <rect width="512" height="512" ${rounded ? 'rx="112"' : ""} fill="url(#bg)"/>
   <g transform="translate(256,256) scale(${s}) translate(-256,-256)">
@@ -32,20 +99,7 @@ function iconSvg(contentScale = 1, rounded = true) {
     <!-- brilho sutil na cruz -->
     <rect x="228" y="56" width="16" height="304" rx="8" fill="#ffffff" opacity="0.28"/>
     <!-- bola de futsal -->
-    <g transform="translate(256,362)">
-      <circle r="94" fill="#ffffff"/>
-      <circle r="94" fill="none" stroke="#0a251a" stroke-width="10"/>
-      <polygon points="0,-40 38,-12 23,34 -23,34 -38,-12" fill="#0a251a"/>
-      <g stroke="#0a251a" stroke-width="9" fill="none" stroke-linecap="round">
-        <path d="M0,-40 L0,-90"/>
-        <path d="M38,-12 L86,-30"/>
-        <path d="M23,34 L54,74"/>
-        <path d="M-23,34 L-54,74"/>
-        <path d="M-38,-12 L-86,-30"/>
-      </g>
-      <!-- reflexo -->
-      <circle cx="-34" cy="-48" r="20" fill="#ffffff" opacity="0.5"/>
-    </g>
+    ${ballSvg()}
   </g>
 </svg>`;
 }
