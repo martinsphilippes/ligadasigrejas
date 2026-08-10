@@ -1,32 +1,9 @@
 "use client";
 
-import { useEffect, useId, useState } from "react";
+import { useState } from "react";
 import { Field, Input, Select } from "@/components/ui/field";
 import { UFS, formatCep } from "@/lib/brazil";
-
-/** Municípios reais do estado, via API pública do IBGE. */
-function useCities(uf: string) {
-  const [cities, setCities] = useState<string[]>([]);
-  useEffect(() => {
-    if (!uf) {
-      setCities([]);
-      return;
-    }
-    let alive = true;
-    fetch(
-      `https://servicodados.ibge.gov.br/api/v1/localidades/estados/${uf}/municipios?orderBy=nome`,
-    )
-      .then((r) => r.json())
-      .then((data: { nome: string }[]) => {
-        if (alive && Array.isArray(data)) setCities(data.map((m) => m.nome));
-      })
-      .catch(() => {});
-    return () => {
-      alive = false;
-    };
-  }, [uf]);
-  return cities;
-}
+import { CityAutocomplete } from "./city-autocomplete";
 
 interface AddressInitial {
   zipCode?: string | null;
@@ -38,8 +15,8 @@ interface AddressInitial {
 
 /**
  * Campos de endereço brasileiros com auto-preenchimento:
- * CEP (ViaCEP) preenche endereço, bairro, cidade e UF; a cidade sugere
- * municípios reais do IBGE conforme o estado escolhido.
+ * CEP (ViaCEP) preenche endereço, bairro, cidade e UF; a cidade tem
+ * autocomplete com os municípios oficiais do IBGE e define a UF sozinha.
  */
 export function AddressFields({
   initial,
@@ -52,14 +29,12 @@ export function AddressFields({
   showDistrict?: boolean;
   requireCity?: boolean;
 }) {
-  const listId = useId();
   const [zip, setZip] = useState(formatCep(initial?.zipCode ?? ""));
   const [address, setAddress] = useState(initial?.address ?? "");
   const [district, setDistrict] = useState(initial?.district ?? "");
   const [city, setCity] = useState(initial?.city ?? "");
   const [uf, setUf] = useState(initial?.state ?? "");
   const [cepStatus, setCepStatus] = useState<"idle" | "loading" | "error" | "ok">("idle");
-  const cities = useCities(uf);
 
   async function onZipChange(raw: string) {
     const masked = formatCep(raw);
@@ -136,21 +111,22 @@ export function AddressFields({
         ) : (
           <span className="hidden sm:block" />
         )}
-        <CityUfInner
-          listId={listId}
-          city={city}
-          setCity={setCity}
-          uf={uf}
-          setUf={setUf}
-          cities={cities}
-          requireCity={requireCity}
-        />
+        <Field label="Cidade" hint="Digite 2 letras para ver sugestões">
+          <CityAutocomplete
+            city={city}
+            setCity={setCity}
+            uf={uf}
+            onSelectUf={setUf}
+            required={requireCity}
+          />
+        </Field>
+        <UfSelect uf={uf} setUf={setUf} required={requireCity} />
       </div>
     </>
   );
 }
 
-/** Apenas Cidade + UF (para ligas): cidades reais do IBGE conforme o estado. */
+/** Apenas Cidade + UF (para ligas), com o mesmo autocomplete do IBGE. */
 export function CityUfFields({
   initial,
   requireCity = false,
@@ -158,76 +134,44 @@ export function CityUfFields({
   initial?: { city?: string | null; state?: string | null };
   requireCity?: boolean;
 }) {
-  const listId = useId();
   const [city, setCity] = useState(initial?.city ?? "");
   const [uf, setUf] = useState(initial?.state ?? "");
-  const cities = useCities(uf);
 
   return (
     <div className="grid gap-4 sm:grid-cols-[1fr_170px]">
-      <CityUfInner
-        listId={listId}
-        city={city}
-        setCity={setCity}
-        uf={uf}
-        setUf={setUf}
-        cities={cities}
-        requireCity={requireCity}
-      />
+      <Field label="Cidade" hint="Digite 2 letras para ver sugestões">
+        <CityAutocomplete
+          city={city}
+          setCity={setCity}
+          uf={uf}
+          onSelectUf={setUf}
+          required={requireCity}
+        />
+      </Field>
+      <UfSelect uf={uf} setUf={setUf} required={requireCity} />
     </div>
   );
 }
 
-function CityUfInner({
-  listId,
-  city,
-  setCity,
+function UfSelect({
   uf,
   setUf,
-  cities,
-  requireCity,
+  required,
 }: {
-  listId: string;
-  city: string;
-  setCity: (v: string) => void;
   uf: string;
   setUf: (v: string) => void;
-  cities: string[];
-  requireCity: boolean;
+  required: boolean;
 }) {
   return (
-    <>
-      <Field label="Cidade" hint={uf && cities.length > 0 ? `${cities.length} municípios de ${uf}` : undefined}>
-        <Input
-          name="city"
-          value={city}
-          onChange={(e) => setCity(e.target.value)}
-          placeholder={uf ? "Digite para buscar..." : "Escolha o estado ao lado"}
-          list={listId}
-          required={requireCity}
-          autoComplete="address-level2"
-        />
-        <datalist id={listId}>
-          {cities.map((c) => (
-            <option key={c} value={c} />
-          ))}
-        </datalist>
-      </Field>
-      <Field label="Estado (UF)">
-        <Select
-          name="state"
-          value={uf}
-          onChange={(e) => setUf(e.target.value)}
-          required={requireCity}
-        >
-          <option value="">Selecione...</option>
-          {UFS.map((u) => (
-            <option key={u.sigla} value={u.sigla}>
-              {u.sigla} — {u.nome}
-            </option>
-          ))}
-        </Select>
-      </Field>
-    </>
+    <Field label="Estado (UF)" hint="Preenchido ao escolher a cidade">
+      <Select name="state" value={uf} onChange={(e) => setUf(e.target.value)} required={required}>
+        <option value="">Selecione...</option>
+        {UFS.map((u) => (
+          <option key={u.sigla} value={u.sigla}>
+            {u.sigla} — {u.nome}
+          </option>
+        ))}
+      </Select>
+    </Field>
   );
 }
