@@ -41,18 +41,7 @@ const POSITIONS = ["GOLEIRO", "FIXO", "ALA", "ALA", "PIVO"];
 async function main() {
   console.log("🌱 Iniciando seed...");
 
-  // Usuário administrador
-  const admin = await db.user.upsert({
-    where: { email: "admin@liga.com" },
-    update: { role: "ADMIN" },
-    create: {
-      name: "Administrador da Liga",
-      email: "admin@liga.com",
-      passwordHash: await bcrypt.hash("123456", 10),
-      role: "ADMIN",
-    },
-  });
-
+  // O esporte base sempre existe (idempotente)
   const futsal = await db.sport.upsert({
     where: { slug: "futsal" },
     update: {},
@@ -64,11 +53,26 @@ async function main() {
     },
   });
 
-  const existing = await db.league.findUnique({ where: { slug: "copa-das-igrejas-2026" } });
-  if (existing) {
-    console.log("Seed já executado (liga demo existe). Nada a fazer.");
+  // Dados de demonstração APENAS em banco virgem (nenhum usuário ainda).
+  // Assim, ligas/igrejas de exemplo excluídas pelo administrador nunca
+  // voltam em deploys futuros.
+  const userCount = await db.user.count();
+  if (userCount > 0) {
+    console.log("Banco já em uso — seed de demonstração ignorado.");
     return;
   }
+
+  // Usuário administrador
+  const admin = await db.user.upsert({
+    where: { email: "admin@liga.com" },
+    update: { role: "ADMIN" },
+    create: {
+      name: "Administrador da Liga",
+      email: "admin@liga.com",
+      passwordHash: await bcrypt.hash("123456", 10),
+      role: "ADMIN",
+    },
+  });
 
   // Igrejas com elenco e comissão
   const churches = [];
