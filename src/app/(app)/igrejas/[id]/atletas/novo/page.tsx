@@ -6,7 +6,7 @@ import { canManageChurch } from "@/lib/permissions";
 import { PageHeader } from "@/components/ui/page-header";
 import { Card, CardContent } from "@/components/ui/card";
 import { createAthleteAction } from "@/lib/actions/church";
-import { AthleteForm } from "@/components/forms/athlete-form";
+import { AthleteFormWithSearch } from "./athlete-form-with-search";
 
 export const metadata: Metadata = { title: "Novo Atleta" };
 
@@ -29,9 +29,9 @@ export default async function NewAthletePage({
       />
       <Card>
         <CardContent className="pt-5">
-          <AthleteForm
+          <AthleteFormWithSearch
+            churchId={church.id}
             action={createAthleteAction.bind(null, church.id)}
-            submitLabel="Cadastrar atleta"
           />
         </CardContent>
       </Card>
