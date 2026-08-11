@@ -78,7 +78,10 @@ export function PwaInstallBanner() {
   if (mode === "hidden") return null;
 
   return (
-    <div className="fixed inset-x-0 bottom-0 z-50 p-3 sm:mx-auto sm:max-w-md animate-fade-up">
+    <div
+      className="fixed inset-x-0 bottom-0 z-50 p-3 sm:mx-auto sm:max-w-md animate-fade-up"
+      style={{ paddingBottom: "calc(env(safe-area-inset-bottom) + 12px)" }}
+    >
       <div className="rounded-2xl border border-brand-200 bg-white p-4 shadow-xl shadow-brand-950/20">
         <div className="flex items-start gap-3">
           {/* eslint-disable-next-line @next/next/no-img-element */}

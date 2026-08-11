@@ -11,7 +11,12 @@ export function Topbar({
   isAdmin?: boolean;
 }) {
   return (
-    <header className="sticky top-0 z-40 border-b border-zinc-200/80 bg-white/85 backdrop-blur-md">
+    <header
+      className="sticky top-0 z-40 border-b border-zinc-200/80 bg-white/85 backdrop-blur-md"
+      // Área segura do sistema (relógio/notch) fica sobre o fundo do cabeçalho,
+      // e os itens clicáveis começam abaixo dela
+      style={{ paddingTop: "env(safe-area-inset-top)" }}
+    >
       <div className="mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 px-4 sm:px-6">
         <div className="flex items-center gap-6">
           <Link href="/" className="flex items-center gap-2 font-bold tracking-tight text-brand-900">

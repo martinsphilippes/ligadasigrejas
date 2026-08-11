@@ -50,7 +50,10 @@ export default async function LeagueLayout({
       {/* Navegação + conteúdo */}
       <div className="lg:grid lg:grid-cols-[200px_1fr] lg:gap-8">
         <aside className="mb-4 lg:mb-0">
-          <div className="lg:sticky lg:top-20">
+          <div
+            className="lg:sticky"
+            style={{ top: "calc(env(safe-area-inset-top) + 5rem)" }}
+          >
             <LeagueNav slug={league.slug} canManage={can(access, "league.manage")} />
           </div>
         </aside>

@@ -10,7 +10,10 @@ export default async function AuthLayout({
   if (session) redirect("/");
 
   return (
-    <div className="flex min-h-dvh">
+    <div
+      className="flex min-h-dvh"
+      style={{ paddingTop: "env(safe-area-inset-top)" }}
+    >
       {/* Painel institucional (desktop) */}
       <div className="relative hidden w-1/2 flex-col justify-between overflow-hidden bg-brand-950 p-10 lg:flex">
         <div
