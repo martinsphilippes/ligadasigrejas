@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { Geist } from "next/font/google";
 import { PwaInstallBanner } from "@/components/pwa-install-banner";
+import { VersionWatcher } from "@/components/version-watcher";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -41,6 +42,7 @@ export default function RootLayout({
       <body className={`${geistSans.variable} font-sans antialiased`}>
         {children}
         <PwaInstallBanner />
+        <VersionWatcher current={process.env.VERCEL_GIT_COMMIT_SHA ?? "dev"} />
       </body>
     </html>
   );
