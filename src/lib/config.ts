@@ -4,7 +4,6 @@
  * e recebem ADMIN automaticamente ao criar a conta.
  */
 export const OWNER_EMAILS = [
-  "martinsphilippes@gmail.com",
   "admin@liga.com",
 ];
 
