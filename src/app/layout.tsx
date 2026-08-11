@@ -25,6 +25,12 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: "#14432f",
+  width: "device-width",
+  initialScale: 1,
+  // Comportamento de aplicativo: sem zoom automático ao focar campos
+  maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

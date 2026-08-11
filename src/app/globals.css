@@ -43,10 +43,19 @@
   }
 }
 
+html {
+  /* Sem zoom por toque duplo e sem ajuste automático de fonte (app-like) */
+  touch-action: manipulation;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
 body {
   background: #f6f7f5;
   color: #18181b;
   -webkit-font-smoothing: antialiased;
+  /* Sem efeito elástico de página inteira / pull-to-refresh acidental */
+  overscroll-behavior-y: none;
 }
 
 /* Toque responsivo no mobile: sem highlight cinza do sistema e sem atraso */

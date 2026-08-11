@@ -1,7 +1,8 @@
 import { cn } from "@/lib/utils";
 
+// text-base no mobile (16px): impede o zoom automático do iOS ao focar o campo
 const inputBase =
-  "w-full rounded-lg border border-zinc-200 bg-white px-3.5 py-2.5 text-sm text-zinc-900 placeholder:text-zinc-400 transition-colors focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/15 disabled:bg-zinc-50";
+  "w-full rounded-lg border border-zinc-200 bg-white px-3.5 py-2.5 text-base sm:text-sm text-zinc-900 placeholder:text-zinc-400 transition-colors focus:border-brand-500 focus:outline-none focus:ring-2 focus:ring-brand-500/15 disabled:bg-zinc-50";
 
 export function Input({ className, ...props }: React.ComponentProps<"input">) {
   return <input className={cn(inputBase, className)} {...props} />;
