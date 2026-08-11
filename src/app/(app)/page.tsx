@@ -80,7 +80,7 @@ export default async function HomePage({
           <EmptyState
             icon="⛪"
             title="Você ainda não participa de nenhuma liga"
-            description="Peça ao organizador do campeonato para vincular você à equipe da sua igreja. Enquanto isso, você pode acompanhar as ligas abertas abaixo."
+            description="Encontre sua igreja no menu Igrejas e solicite entrada na equipe — aceito o ingresso, os campeonatos dela aparecem aqui. Enquanto isso, você pode acompanhar as ligas abertas abaixo."
           />
         )
       ) : (

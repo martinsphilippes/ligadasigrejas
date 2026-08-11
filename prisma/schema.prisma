@@ -27,9 +27,14 @@ model User {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
+  // Igreja da qual o usuário faz parte (definida ao ter ingresso aceito)
+  churchId String?
+  church   Church? @relation("Congregants", fields: [churchId], references: [id], onDelete: SetNull)
+
   ownedLeagues League[]       @relation("LeagueOwner")
   memberships  LeagueMember[]
   resetTokens  PasswordResetToken[]
+  joinRequests JoinRequest[]
 }
 
 model PasswordResetToken {
@@ -76,10 +81,12 @@ model Church {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  athletes    Athlete[]
-  staff       StaffMember[]
-  leagueTeams LeagueTeam[]
-  members     LeagueMember[]
+  athletes     Athlete[]
+  staff        StaffMember[]
+  leagueTeams  LeagueTeam[]
+  members      LeagueMember[]
+  congregants  User[]        @relation("Congregants")
+  joinRequests JoinRequest[]
 }
 
 model Athlete {
@@ -304,6 +311,23 @@ model LeagueMember {
 
   @@unique([leagueId, userId, role])
   @@index([leagueId])
+}
+
+// Solicitação de ingresso de um usuário no time de uma igreja
+model JoinRequest {
+  id       String @id @default(cuid())
+  churchId String
+  church   Church @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  userId   String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status   String @default("PENDENTE") // PENDENTE | ACEITO | RECUSADO
+  message  String? // mensagem do solicitante
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([churchId, userId])
+  @@index([churchId, status])
 }
 
 model Announcement {

@@ -33,14 +33,22 @@ export const getLeagueTeams = cache(async (leagueId: string) => {
   });
 });
 
-/** Igreja(s) do usuário dentro da liga (para "Minha Equipe"). */
+/**
+ * Equipe do usuário dentro da liga (para "Minha Equipe"): via papel de
+ * organização vinculado a uma igreja ou, na falta dele, pela igreja da qual
+ * o usuário faz parte (ingresso aceito).
+ */
 export const getMyTeam = cache(async (leagueId: string, userId: string) => {
-  const membership = await db.leagueMember.findFirst({
-    where: { leagueId, userId, churchId: { not: null } },
-  });
-  if (!membership?.churchId) return null;
+  const [membership, user] = await Promise.all([
+    db.leagueMember.findFirst({
+      where: { leagueId, userId, churchId: { not: null } },
+    }),
+    db.user.findUnique({ where: { id: userId }, select: { churchId: true } }),
+  ]);
+  const churchId = membership?.churchId ?? user?.churchId;
+  if (!churchId) return null;
   return db.leagueTeam.findFirst({
-    where: { leagueId, churchId: membership.churchId },
+    where: { leagueId, churchId },
     include: { church: true },
   });
 });

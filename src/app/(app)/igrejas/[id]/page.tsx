@@ -21,6 +21,9 @@ import {
   deleteChurchAction,
   deleteStaffAction,
 } from "@/lib/actions/church";
+import { acceptJoinAction, rejectJoinAction } from "@/lib/actions/join";
+import { formatDate } from "@/lib/utils";
+import { JoinRequestCard } from "./join-request-card";
 
 export default async function ChurchPage({
   params,
@@ -39,10 +42,21 @@ export default async function ChurchPage({
   });
   if (!church) notFound();
 
-  const [manage, organizer] = await Promise.all([
+  const [manage, organizer, me, myRequest] = await Promise.all([
     canManageChurch(user.sub, church.id),
     getPlatformRole(user.sub).then(isPlatformOrganizer),
+    db.user.findUniqueOrThrow({ where: { id: user.sub } }),
+    db.joinRequest.findUnique({
+      where: { churchId_userId: { churchId: church.id, userId: user.sub } },
+    }),
   ]);
+  const pendingRequests = manage
+    ? await db.joinRequest.findMany({
+        where: { churchId: church.id, status: "PENDENTE" },
+        include: { user: true },
+        orderBy: { createdAt: "asc" },
+      })
+    : [];
   const titulares = church.athletes.filter((a) => a.squadRole === "TITULAR");
   const reservas = church.athletes.filter((a) => a.squadRole !== "TITULAR");
 
@@ -76,6 +90,70 @@ export default async function ChurchPage({
           </div>
         )}
       </div>
+
+      {/* Solicitação de ingresso (visão do membro) */}
+      {!manage && (
+        <div className="mb-6">
+          <JoinRequestCard
+            churchId={church.id}
+            churchName={church.name}
+            status={(myRequest?.status as "PENDENTE" | "ACEITO" | "RECUSADO") ?? "NENHUMA"}
+            isMyChurch={me.churchId === church.id}
+          />
+        </div>
+      )}
+
+      {/* Solicitações pendentes (visão do responsável) */}
+      {manage && pendingRequests.length > 0 && (
+        <Card className="mb-6 border-amber-200">
+          <CardHeader>
+            <CardTitle>🙋 Solicitações de ingresso ({pendingRequests.length})</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ul className="divide-y divide-zinc-100">
+              {pendingRequests.map((req) => (
+                <li key={req.id} className="flex flex-wrap items-center gap-3 py-3">
+                  <Avatar name={req.user.name} src={req.user.avatarUrl} size="md" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold text-zinc-900">
+                      {req.user.name}
+                    </p>
+                    <p className="truncate text-xs text-zinc-400">
+                      {req.user.email} · pediu em {formatDate(req.createdAt)}
+                    </p>
+                    {req.message && (
+                      <p className="mt-1 rounded-lg bg-zinc-50 px-2.5 py-1.5 text-xs italic text-zinc-600">
+                        &ldquo;{req.message}&rdquo;
+                      </p>
+                    )}
+                  </div>
+                  <div className="flex shrink-0 gap-2">
+                    <form action={acceptJoinAction.bind(null, req.id)}>
+                      <button
+                        type="submit"
+                        className="rounded-lg bg-brand-700 px-3.5 py-2 text-xs font-semibold text-white transition-all hover:bg-brand-800 active:scale-[0.97]"
+                      >
+                        ✓ Aceitar
+                      </button>
+                    </form>
+                    <form action={rejectJoinAction.bind(null, req.id)}>
+                      <button
+                        type="submit"
+                        className="rounded-lg border border-zinc-200 px-3.5 py-2 text-xs font-semibold text-red-600 transition-all hover:bg-red-50 active:scale-[0.97]"
+                      >
+                        Recusar
+                      </button>
+                    </form>
+                  </div>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-2 text-xs text-zinc-400">
+              Ao aceitar, a pessoa entra no elenco como reserva e a igreja passa a ser a equipe dela.
+            </p>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-[2fr_1fr]">
         <div className="space-y-6">

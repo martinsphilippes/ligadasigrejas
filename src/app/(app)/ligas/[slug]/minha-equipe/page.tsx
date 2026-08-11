@@ -30,7 +30,7 @@ export default async function MyTeamPage({
       <EmptyState
         icon="⭐"
         title="Você ainda não está vinculado a uma equipe"
-        description="Peça ao organizador da liga para vincular seu usuário a uma igreja na tela Organização (papel Administrador da Equipe ou Organizador da Igreja)."
+        description="Abra a página da sua igreja no menu Igrejas e toque em “Solicitar entrada na equipe” — o responsável aceita seu ingresso e a equipe aparece aqui."
         action={
           access.isOwner ? (
             <ButtonLink href={`/ligas/${league.slug}/organizacao`}>
