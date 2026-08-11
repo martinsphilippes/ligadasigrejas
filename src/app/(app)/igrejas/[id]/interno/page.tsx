@@ -21,10 +21,12 @@ import { toggleSquadRoleAction } from "@/lib/actions/church";
 export const metadata: Metadata = { title: "Jogos Internos" };
 
 const SORTS: { key: InternalSort; label: string }[] = [
-  { key: "destaques", label: "⭐ Destaques" },
+  { key: "destaques", label: "⭐" },
+  { key: "nota", label: "Nota" },
   { key: "gols", label: "Gols" },
-  { key: "vitorias", label: "Vitórias" },
-  { key: "jogos", label: "Jogos" },
+  { key: "assistencias", label: "🅰️" },
+  { key: "vitorias", label: "V" },
+  { key: "jogos", label: "J" },
 ];
 
 export default async function InternalPage({
@@ -60,7 +62,9 @@ export default async function InternalPage({
   ]);
 
   const sort = (SORTS.some((s) => s.key === ord) ? ord : "destaques") as InternalSort;
-  const stats = sortInternalStats(statsRaw, sort).filter((r) => r.games > 0);
+  const stats = sortInternalStats(statsRaw, sort).filter(
+    (r) => r.games > 0 || r.absences > 0,
+  );
   const base = `/igrejas/${church.id}/interno`;
 
   return (
@@ -112,7 +116,7 @@ export default async function InternalPage({
           </p>
         ) : (
           <div className="overflow-x-auto rounded-xl border border-zinc-200/80 bg-white shadow-sm">
-            <table className="w-full min-w-[560px] text-sm">
+            <table className="w-full min-w-[720px] text-sm">
               <thead>
                 <tr className="border-b border-zinc-200 text-left text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
                   <th className="py-2.5 pl-4 pr-2">Atleta</th>
@@ -129,6 +133,7 @@ export default async function InternalPage({
                       </Link>
                     </th>
                   ))}
+                  <th className="px-2 py-2.5 text-center">Faltas</th>
                   <th className="py-2.5 pl-2 pr-4 text-right">Condição</th>
                 </tr>
               </thead>
@@ -139,25 +144,44 @@ export default async function InternalPage({
                     className="border-b border-zinc-100 last:border-0 hover:bg-zinc-50/70"
                   >
                     <td className="py-2.5 pl-4 pr-2">
-                      <span className="flex items-center gap-2.5">
+                      <Link
+                        href={`${base}/atleta/${row.athleteId}`}
+                        className="flex items-center gap-2.5 hover:text-brand-800"
+                      >
                         <span className="w-4 text-center text-xs font-bold text-zinc-400">
                           {i + 1}
                         </span>
                         <Avatar name={row.name} src={row.photoUrl} size="xs" />
-                        <span className="font-medium text-zinc-800">{row.name}</span>
-                      </span>
+                        <span className="font-medium text-zinc-800 underline-offset-4 hover:underline">
+                          {row.name}
+                        </span>
+                      </Link>
                     </td>
                     <td className="px-2 py-2.5 text-center font-bold tabular-nums text-amber-600">
                       {row.highlights}
                     </td>
+                    <td className="px-2 py-2.5 text-center font-semibold tabular-nums text-zinc-800">
+                      {row.avgRating != null ? row.avgRating.toFixed(1) : "—"}
+                    </td>
                     <td className="px-2 py-2.5 text-center tabular-nums text-zinc-700">
                       {row.goals}
+                    </td>
+                    <td className="px-2 py-2.5 text-center tabular-nums text-zinc-500">
+                      {row.assists}
                     </td>
                     <td className="px-2 py-2.5 text-center tabular-nums text-zinc-500">
                       {row.wins}
                     </td>
                     <td className="px-2 py-2.5 text-center tabular-nums text-zinc-500">
                       {row.games}
+                    </td>
+                    <td
+                      className={cn(
+                        "px-2 py-2.5 text-center tabular-nums",
+                        row.absences > 0 ? "font-semibold text-red-500" : "text-zinc-400",
+                      )}
+                    >
+                      {row.absences}
                     </td>
                     <td className="py-2.5 pl-2 pr-4">
                       <span className="flex items-center justify-end gap-2">

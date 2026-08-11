@@ -158,7 +158,7 @@ export async function addInternalEventAction(
 
   const schema = z.object({
     athleteId: z.string().min(1, "Selecione o atleta"),
-    type: z.enum(["GOL", "DESTAQUE"]),
+    type: z.enum(["GOL", "ASSISTENCIA", "DESTAQUE"]),
   });
   const parsed = schema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return { error: parsed.error.issues[0].message };
@@ -186,7 +186,44 @@ export async function addInternalEventAction(
   });
 
   revalidateInternal(match.churchId);
-  return { success: parsed.data.type === "GOL" ? "Gol registrado." : "Destaque marcado." };
+  const labels = { GOL: "Gol registrado.", ASSISTENCIA: "Assistência registrada.", DESTAQUE: "Destaque marcado." };
+  return { success: labels[parsed.data.type] };
+}
+
+/** Nota de desempenho do atleta no jogo (1–5; 0 limpa a nota). */
+export async function setInternalRatingAction(
+  matchId: string,
+  athleteId: string,
+  rating: number,
+) {
+  const match = await db.internalMatch.findUnique({ where: { id: matchId } });
+  if (!match) return;
+  await requireManager(match.churchId);
+  const value = Math.round(rating);
+  if (value < 0 || value > 5) return;
+
+  await db.internalPlayer.updateMany({
+    where: { matchId, athleteId },
+    data: { rating: value === 0 ? null : value },
+  });
+  revalidateInternal(match.churchId);
+}
+
+/** Marca/desmarca falta do atleta no treino (faltou não conta jogo). */
+export async function toggleAttendanceAction(matchId: string, athleteId: string) {
+  const match = await db.internalMatch.findUnique({ where: { id: matchId } });
+  if (!match) return;
+  await requireManager(match.churchId);
+
+  const player = await db.internalPlayer.findUnique({
+    where: { matchId_athleteId: { matchId, athleteId } },
+  });
+  if (!player) return;
+  await db.internalPlayer.update({
+    where: { id: player.id },
+    data: { attended: !player.attended },
+  });
+  revalidateInternal(match.churchId);
 }
 
 export async function deleteInternalEventAction(eventId: string) {

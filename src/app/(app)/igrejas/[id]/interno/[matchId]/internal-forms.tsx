@@ -132,8 +132,9 @@ export function InternalEventForm({
             </option>
           ))}
         </Select>
-        <Select name="type" defaultValue="GOL" className="w-32">
+        <Select name="type" defaultValue="GOL" className="w-40">
           <option value="GOL">⚽ Gol</option>
+          <option value="ASSISTENCIA">🅰️ Assistência</option>
           <option value="DESTAQUE" disabled={highlightsLeft <= 0}>
             ⭐ Destaque {highlightsLeft <= 0 ? "(3/3)" : ""}
           </option>

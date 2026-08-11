@@ -13,8 +13,10 @@ import {
   deleteInternalEventAction,
   deleteInternalMatchAction,
   setInternalPlayerAction,
+  toggleAttendanceAction,
 } from "@/lib/actions/internal";
 import { InternalResultForm, InternalEventForm } from "./internal-forms";
+import { RatingStars } from "./rating-stars";
 
 export const metadata: Metadata = { title: "Jogo Interno" };
 
@@ -39,6 +41,7 @@ export default async function InternalMatchPage({
   const sideA = match.players.filter((p) => p.side === "A");
   const sideB = match.players.filter((p) => p.side === "B");
   const goals = match.events.filter((e) => e.type === "GOL");
+  const assists = match.events.filter((e) => e.type === "ASSISTENCIA");
   const highlights = match.events.filter((e) => e.type === "DESTAQUE");
   const lineup = match.players.map((p) => ({ id: p.athleteId, name: p.athlete.name }));
 
@@ -102,40 +105,79 @@ export default async function InternalMatchPage({
                 </p>
                 <ul className="space-y-1.5">
                   {list.map((p) => (
-                    <li key={p.id} className="flex items-center gap-2">
-                      <Avatar name={p.athlete.name} src={p.athlete.photoUrl} size="xs" />
-                      <span className="min-w-0 flex-1 truncate text-sm text-zinc-800">
-                        {p.athlete.name}
-                      </span>
-                      {manage && match.status !== "FINALIZADO" && (
-                        <span className="flex gap-0.5">
-                          <form
-                            action={setInternalPlayerAction.bind(
-                              null,
-                              match.id,
-                              p.athleteId,
-                              p.side === "A" ? "B" : "A",
+                    <li key={p.id} className="space-y-0.5">
+                      <span className="flex items-center gap-2">
+                        <Avatar name={p.athlete.name} src={p.athlete.photoUrl} size="xs" />
+                        <span
+                          className={`min-w-0 flex-1 truncate text-sm ${
+                            p.attended ? "text-zinc-800" : "text-zinc-400 line-through"
+                          }`}
+                        >
+                          {p.athlete.name}
+                        </span>
+                        {!p.attended && (
+                          <span className="rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-bold text-red-500">
+                            Faltou
+                          </span>
+                        )}
+                        {manage && (
+                          <span className="flex gap-0.5">
+                            <form action={toggleAttendanceAction.bind(null, match.id, p.athleteId)}>
+                              <button
+                                type="submit"
+                                title={p.attended ? "Marcar falta" : "Remover falta"}
+                                className="rounded px-1.5 py-0.5 text-[11px] text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700"
+                              >
+                                {p.attended ? "F" : "✓"}
+                              </button>
+                            </form>
+                            {match.status !== "FINALIZADO" && (
+                              <>
+                                <form
+                                  action={setInternalPlayerAction.bind(
+                                    null,
+                                    match.id,
+                                    p.athleteId,
+                                    p.side === "A" ? "B" : "A",
+                                  )}
+                                >
+                                  <button
+                                    type="submit"
+                                    title="Trocar de time"
+                                    className="rounded px-1.5 py-0.5 text-[11px] text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700"
+                                  >
+                                    ⇄
+                                  </button>
+                                </form>
+                                <form
+                                  action={setInternalPlayerAction.bind(null, match.id, p.athleteId, "FORA")}
+                                >
+                                  <button
+                                    type="submit"
+                                    title="Tirar do jogo"
+                                    className="rounded px-1.5 py-0.5 text-[11px] text-red-400 hover:bg-red-50 hover:text-red-600"
+                                  >
+                                    ×
+                                  </button>
+                                </form>
+                              </>
                             )}
-                          >
-                            <button
-                              type="submit"
-                              title="Trocar de time"
-                              className="rounded px-1.5 py-0.5 text-[11px] text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700"
-                            >
-                              ⇄
-                            </button>
-                          </form>
-                          <form
-                            action={setInternalPlayerAction.bind(null, match.id, p.athleteId, "FORA")}
-                          >
-                            <button
-                              type="submit"
-                              title="Tirar do jogo"
-                              className="rounded px-1.5 py-0.5 text-[11px] text-red-400 hover:bg-red-50 hover:text-red-600"
-                            >
-                              ×
-                            </button>
-                          </form>
+                          </span>
+                        )}
+                      </span>
+                      {manage && p.attended && (
+                        <span className="block pl-7">
+                          <RatingStars
+                            matchId={match.id}
+                            athleteId={p.athleteId}
+                            rating={p.rating}
+                          />
+                        </span>
+                      )}
+                      {!manage && p.rating != null && (
+                        <span className="block pl-7 text-xs text-amber-500">
+                          {"★".repeat(p.rating)}
+                          <span className="text-zinc-300">{"★".repeat(5 - p.rating)}</span>
                         </span>
                       )}
                     </li>
@@ -153,16 +195,32 @@ export default async function InternalMatchPage({
               <CardTitle>Súmula</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-              {goals.length === 0 && highlights.length === 0 && (
-                <p className="text-sm text-zinc-400">Nenhum gol ou destaque registrado.</p>
+              {goals.length === 0 && assists.length === 0 && highlights.length === 0 && (
+                <p className="text-sm text-zinc-400">Nenhum gol, assistência ou destaque registrado.</p>
               )}
-              {goals.length > 0 && (
+              {(goals.length > 0 || assists.length > 0) && (
                 <ul className="space-y-1.5">
                   {goals.map((e) => (
                     <li key={e.id} className="flex items-center gap-2.5 rounded-lg bg-zinc-50/80 px-3 py-2 text-sm">
                       <span>⚽</span>
                       <span className="min-w-0 flex-1 truncate font-medium text-zinc-800">
                         {e.athlete.name}
+                      </span>
+                      {manage && (
+                        <form action={deleteInternalEventAction.bind(null, e.id)}>
+                          <button type="submit" className="rounded px-1.5 text-xs text-red-400 hover:bg-red-50">
+                            ×
+                          </button>
+                        </form>
+                      )}
+                    </li>
+                  ))}
+                  {assists.map((e) => (
+                    <li key={e.id} className="flex items-center gap-2.5 rounded-lg bg-sky-50/80 px-3 py-2 text-sm">
+                      <span>🅰️</span>
+                      <span className="min-w-0 flex-1 truncate font-medium text-zinc-800">
+                        {e.athlete.name}
+                        <span className="ml-1.5 text-xs font-normal text-zinc-400">assistência</span>
                       </span>
                       {manage && (
                         <form action={deleteInternalEventAction.bind(null, e.id)}>

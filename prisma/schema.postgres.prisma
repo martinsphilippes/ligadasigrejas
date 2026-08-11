@@ -151,6 +151,8 @@ model InternalPlayer {
   athleteId String
   athlete   Athlete       @relation(fields: [athleteId], references: [id], onDelete: Cascade)
   side      String // A | B
+  rating    Int? // nota do desempenho no jogo (1–5)
+  attended  Boolean @default(true) // false = faltou ao treino
 
   @@unique([matchId, athleteId])
 }
@@ -162,7 +164,7 @@ model InternalEvent {
   match     InternalMatch @relation(fields: [matchId], references: [id], onDelete: Cascade)
   athleteId String
   athlete   Athlete       @relation(fields: [athleteId], references: [id], onDelete: Cascade)
-  type      String // GOL | DESTAQUE
+  type      String // GOL | ASSISTENCIA | DESTAQUE
 
   createdAt DateTime @default(now())
 
