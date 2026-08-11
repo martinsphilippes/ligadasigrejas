@@ -81,7 +81,8 @@ model Church {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  athletes     Athlete[]
+  athletes        Athlete[]
+  internalMatches InternalMatch[]
   staff        StaffMember[]
   leagueTeams  LeagueTeam[]
   members      LeagueMember[]
@@ -107,9 +108,75 @@ model Athlete {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  matchEvents MatchEvent[]
+  matchEvents     MatchEvent[]
+  internalPlays   InternalPlayer[]
+  internalEvents  InternalEvent[]
+  squadChanges    SquadChange[]
 
   @@index([churchId])
+}
+
+// ─── Jogos internos (treinos/rachas da própria igreja) ───────────────────────
+
+model InternalMatch {
+  id          String    @id @default(cuid())
+  churchId    String
+  church      Church    @relation(fields: [churchId], references: [id], onDelete: Cascade)
+  scheduledAt DateTime?
+  location    String?
+  notes       String?
+  teamAName   String    @default("Time Verde")
+  teamBName   String    @default("Time Amarelo")
+  scoreA      Int?
+  scoreB      Int?
+  status      String    @default("AGENDADO") // AGENDADO | FINALIZADO | CANCELADO
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  players InternalPlayer[]
+  events  InternalEvent[]
+
+  @@index([churchId, scheduledAt])
+}
+
+// Escalação do jogo interno: cada atleta em um dos lados
+model InternalPlayer {
+  id        String        @id @default(cuid())
+  matchId   String
+  match     InternalMatch @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  athleteId String
+  athlete   Athlete       @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+  side      String // A | B
+
+  @@unique([matchId, athleteId])
+}
+
+// Eventos do jogo interno: gols e destaques (máx. 3 destaques por jogo)
+model InternalEvent {
+  id        String        @id @default(cuid())
+  matchId   String
+  match     InternalMatch @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  athleteId String
+  athlete   Athlete       @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+  type      String // GOL | DESTAQUE
+
+  createdAt DateTime @default(now())
+
+  @@index([matchId])
+}
+
+// Histórico de movimentações titular/reserva (registro da gestão do elenco)
+model SquadChange {
+  id        String  @id @default(cuid())
+  athleteId String
+  athlete   Athlete @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+  from      String
+  to        String
+
+  createdAt DateTime @default(now())
+
+  @@index([athleteId])
 }
 
 // Comissão técnica da igreja

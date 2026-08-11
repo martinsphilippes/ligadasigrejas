@@ -194,14 +194,17 @@ export async function updateAthleteAction(
   redirect(`/igrejas/${athlete.churchId}`);
 }
 
-/** Alterna atleta entre titular e reserva (organização da equipe). */
+/** Alterna atleta entre titular e reserva, registrando a movimentação. */
 export async function toggleSquadRoleAction(athleteId: string) {
   const athlete = await db.athlete.findUniqueOrThrow({ where: { id: athleteId } });
   await requireChurchManager(athlete.churchId);
-  await db.athlete.update({
-    where: { id: athleteId },
-    data: { squadRole: athlete.squadRole === "TITULAR" ? "RESERVA" : "TITULAR" },
-  });
+  const to = athlete.squadRole === "TITULAR" ? "RESERVA" : "TITULAR";
+  await db.$transaction([
+    db.athlete.update({ where: { id: athleteId }, data: { squadRole: to } }),
+    db.squadChange.create({
+      data: { athleteId, from: athlete.squadRole, to },
+    }),
+  ]);
   revalidatePath(`/igrejas/${athlete.churchId}`, "layout");
 }
 

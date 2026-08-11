@@ -82,14 +82,19 @@ export default async function ChurchPage({
             )}
           </div>
         </div>
-        {manage && (
-          <div className="flex gap-2">
-            <ButtonLink variant="secondary" href={`/igrejas/${church.id}/editar`}>
-              Editar
-            </ButtonLink>
-            <ButtonLink href={`/igrejas/${church.id}/atletas/novo`}>+ Atleta</ButtonLink>
-          </div>
-        )}
+        <div className="flex flex-wrap gap-2">
+          <ButtonLink variant="gold" href={`/igrejas/${church.id}/interno`}>
+            ⚽ Jogos internos
+          </ButtonLink>
+          {manage && (
+            <>
+              <ButtonLink variant="secondary" href={`/igrejas/${church.id}/editar`}>
+                Editar
+              </ButtonLink>
+              <ButtonLink href={`/igrejas/${church.id}/atletas/novo`}>+ Atleta</ButtonLink>
+            </>
+          )}
+        </div>
       </div>
 
       {/* Solicitação de ingresso (visão do membro) */}
