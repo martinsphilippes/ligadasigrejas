@@ -6,6 +6,7 @@ import { requireUser } from "@/lib/auth/session";
 import {
   canManageChurch,
   getPlatformRole,
+  getUserLite,
   isPlatformOrganizer,
 } from "@/lib/permissions";
 import { Avatar } from "@/components/ui/avatar";
@@ -45,7 +46,7 @@ export default async function ChurchPage({
   const [manage, organizer, me, myRequest] = await Promise.all([
     canManageChurch(user.sub, church.id),
     getPlatformRole(user.sub).then(isPlatformOrganizer),
-    db.user.findUniqueOrThrow({ where: { id: user.sub } }),
+    getUserLite(user.sub).then((u) => u!),
     db.joinRequest.findUnique({
       where: { churchId_userId: { churchId: church.id, userId: user.sub } },
     }),

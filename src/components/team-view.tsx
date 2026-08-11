@@ -25,7 +25,7 @@ export async function TeamView({
   teamId: string;
   canManageSquad: boolean;
 }) {
-  const [team, standings, matches, discipline] = await Promise.all([
+  const [team, standings, matches, discipline, events] = await Promise.all([
     db.leagueTeam.findUnique({
       where: { id: teamId },
       include: {
@@ -55,6 +55,16 @@ export async function TeamView({
       orderBy: { scheduledAt: "asc" },
     }),
     getTeamDiscipline(leagueId, teamId),
+    // Estatísticas individuais (gols e cartões) da equipe na liga
+    db.matchEvent.groupBy({
+      by: ["athleteId", "type"],
+      where: {
+        teamId,
+        athleteId: { not: null },
+        match: { leagueId, status: { in: [...COUNTED_STATUSES] } },
+      },
+      _count: { _all: true },
+    }),
   ]);
 
   if (!team || team.leagueId !== leagueId) return null;
@@ -66,17 +76,6 @@ export async function TeamView({
   const upcoming = matches.filter(
     (m) => m.status === "AGENDADO" || m.status === "EM_ANDAMENTO" || m.status === "ADIADO",
   );
-
-  // Estatísticas individuais (gols e cartões) da equipe na liga
-  const events = await db.matchEvent.groupBy({
-    by: ["athleteId", "type"],
-    where: {
-      teamId,
-      athleteId: { not: null },
-      match: { leagueId, status: { in: [...COUNTED_STATUSES] } },
-    },
-    _count: { _all: true },
-  });
   const statsByAthlete = new Map<string, { goals: number; yellow: number; red: number }>();
   for (const e of events) {
     if (!e.athleteId) continue;

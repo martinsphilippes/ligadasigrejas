@@ -19,26 +19,25 @@ export default async function HomePage({
   const user = await requireUser();
   const organizer = isPlatformOrganizer(await getPlatformRole(user.sub));
 
-  const allLeagues = await db.league.findMany({
-    include: {
-      sport: true,
-      _count: { select: { teams: true, matches: true } },
-    },
-    orderBy: { createdAt: "desc" },
-  });
+  const [allLeagues, myMemberships] = await Promise.all([
+    db.league.findMany({
+      include: {
+        sport: true,
+        _count: { select: { teams: true, matches: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    }),
+    db.leagueMember.findMany({
+      where: { userId: user.sub },
+      select: { leagueId: true },
+    }),
+  ]);
 
   // Regiões (UFs) com campeonatos, para o filtro
   const regions = [...new Set(allLeagues.flatMap((l) => (l.state ? [l.state] : [])))].sort();
   const leagues = uf ? allLeagues.filter((l) => l.state === uf) : allLeagues;
 
-  const memberOf = new Set(
-    (
-      await db.leagueMember.findMany({
-        where: { userId: user.sub },
-        select: { leagueId: true },
-      })
-    ).map((m) => m.leagueId),
-  );
+  const memberOf = new Set(myMemberships.map((m) => m.leagueId));
 
   const mine = leagues.filter((l) => l.ownerId === user.sub || memberOf.has(l.id));
   const others = leagues.filter((l) => !mine.includes(l));

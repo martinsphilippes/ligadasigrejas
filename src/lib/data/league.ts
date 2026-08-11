@@ -3,7 +3,7 @@ import { cache } from "react";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/auth/session";
-import { getLeagueAccess } from "@/lib/permissions";
+import { getLeagueAccess, getUserLite } from "@/lib/permissions";
 
 /** Liga pelo slug com regras e esporte; 404 se não existir. Cacheada por requisição. */
 export const getLeague = cache(async (slug: string) => {
@@ -43,7 +43,7 @@ export const getMyTeam = cache(async (leagueId: string, userId: string) => {
     db.leagueMember.findFirst({
       where: { leagueId, userId, churchId: { not: null } },
     }),
-    db.user.findUnique({ where: { id: userId }, select: { churchId: true } }),
+    getUserLite(userId),
   ]);
   const churchId = membership?.churchId ?? user?.churchId;
   if (!churchId) return null;

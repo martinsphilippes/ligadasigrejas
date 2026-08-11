@@ -6,12 +6,20 @@ import { isOwnerEmail } from "@/lib/config";
 
 // ─── Papéis de plataforma ────────────────────────────────────────────────────
 
+/**
+ * Registro enxuto do usuário, buscado UMA vez por requisição e compartilhado
+ * por checagem de sessão, papel e vínculo de igreja (menos idas ao banco).
+ */
+export const getUserLite = cache(async (userId: string) => {
+  return db.user.findUnique({
+    where: { id: userId },
+    select: { id: true, role: true, email: true, churchId: true },
+  });
+});
+
 /** Papel de plataforma do usuário (ADMIN | ORGANIZADOR | MEMBRO). */
 export const getPlatformRole = cache(async (userId: string): Promise<PlatformRole> => {
-  const user = await db.user.findUnique({
-    where: { id: userId },
-    select: { role: true, email: true },
-  });
+  const user = await getUserLite(userId);
   // Donos do app são sempre administradores, aconteça o que acontecer no banco.
   if (isOwnerEmail(user?.email)) return "ADMIN";
   return (user?.role as PlatformRole) ?? "MEMBRO";

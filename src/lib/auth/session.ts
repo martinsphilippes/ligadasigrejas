@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { SignJWT, jwtVerify } from "jose";
 import { cache } from "react";
 import { db } from "@/lib/db";
+import { getUserLite } from "@/lib/permissions";
 
 const COOKIE_NAME = "liga_session";
 const SESSION_DAYS = 30;
@@ -59,21 +60,16 @@ export const getSession = cache(async (): Promise<SessionPayload | null> => {
   }
 });
 
-/** Sessão aponta para um usuário que realmente existe? Cacheado por requisição. */
-const sessionUserExists = cache(async (userId: string): Promise<boolean> => {
-  const user = await db.user.findUnique({ where: { id: userId }, select: { id: true } });
-  return !!user;
-});
-
 /**
  * Exige usuário autenticado; redireciona para /login caso contrário.
  * Sessões órfãs (JWT válido de usuário inexistente — ex.: banco trocado)
- * são encerradas via /sair para forçar novo login.
+ * são encerradas via /sair. Usa o registro cacheado compartilhado com as
+ * checagens de papel — uma única consulta por requisição.
  */
 export async function requireUser(): Promise<SessionPayload> {
   const session = await getSession();
   if (!session) redirect("/login");
-  if (!(await sessionUserExists(session.sub))) redirect("/sair");
+  if (!(await getUserLite(session.sub))) redirect("/sair");
   return session;
 }
 

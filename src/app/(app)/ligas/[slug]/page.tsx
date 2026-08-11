@@ -20,8 +20,17 @@ export default async function LeagueDashboardPage({
   const { league, access } = await getLeagueContext(slug);
   const manage = can(access, "league.manage");
 
-  const [standings, teamCount, athleteCount, nextMatches, lastMatches, announcements, currentRound] =
-    await Promise.all([
+  const [
+    standings,
+    teamCount,
+    athleteCount,
+    nextMatches,
+    lastMatches,
+    announcements,
+    currentRound,
+    totalMatches,
+    playedMatches,
+  ] = await Promise.all([
       getStandings(league.id),
       db.leagueTeam.count({ where: { leagueId: league.id } }),
       db.athlete.count({
@@ -62,12 +71,11 @@ export default async function LeagueDashboardPage({
         },
         orderBy: { number: "asc" },
       }),
+      db.match.count({ where: { leagueId: league.id } }),
+      db.match.count({
+        where: { leagueId: league.id, status: { in: ["FINALIZADO", "WO"] } },
+      }),
     ]);
-
-  const totalMatches = await db.match.count({ where: { leagueId: league.id } });
-  const playedMatches = await db.match.count({
-    where: { leagueId: league.id, status: { in: ["FINALIZADO", "WO"] } },
-  });
 
   return (
     <div className="space-y-6">
